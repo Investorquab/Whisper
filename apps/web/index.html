@@ -1,16 +1,511 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Whisper: post-quantum messages on QoreChain</title>
-    <meta name="description" content="Message any QoreChain address. Sealed with ML-KEM-1024 in your browser, sent through QoreX with ML-DSA-87, stored on chain." />
-    <meta name="theme-color" content="#0a0d14" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <script src="/theme.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="en" data-type="software" data-radius="sharp" data-ground="sky" data-buttons="arrow" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Whisper: encrypted messages for QoreChain addresses</title>
+<meta name="description" content="A post-quantum messenger for QoreChain wallets: sealed in your browser, sent through QoreX, kept on chain with no server in between.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Whisper: encrypted messages for QoreChain addresses">
+<meta property="og:description" content="Write to any QoreChain wallet. Sealed with ML-KEM-1024, signed with ML-DSA-87, stored on chain.">
+<meta property="og:image" content="/share.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0a0d14">
+<!-- <link rel="canonical" href="https://[the deployed domain]/"> once the domain is known -->
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<link rel="stylesheet" href="/src/landing/fonts.css">
+<link rel="stylesheet" href="/assets/system.css">
+<link rel="stylesheet" href="/assets/ui/cards.css">
+<link rel="stylesheet" href="/assets/motion/motion.css">
+<link rel="stylesheet" href="/assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="/assets/layout/layout.css">
+<link rel="stylesheet" href="/assets/icons/icon.css">
+<!-- start.mjs brand --page software --bg #0a0d14 --ink #e9edf3 --accent #5ab9fc --surface #131824 --muted #8b94a5 --type gabarito --radius sharp
+     Printed as is, except the family names: the faces are self-hosted from @fontsource-variable, which names them "… Variable". -->
+<style>
+:root {
+  --p-bg: #0a0d14; --p-surface: #131824; --p-ink: #e9edf3; --p-muted: #8b94a5;
+  --p-accent: #5ab9fc; --p-accent-ink: #0a0d14; --p-action: #5ab9fc; --p-action-ink: #0a0d14;
+  --p-inv-bg: #e9edf3; --p-inv-surface: #d7dbe1; --p-inv-ink: #0a0d14; --p-inv-muted: #54575f;
+  --p-inv-accent: #0a0d14; --p-inv-accent-ink: #e9edf3; --p-inv-action: #0a0d14; --p-inv-action-ink: #e9edf3;
+  --font-display: "Gabarito Variable", "Gabarito", system-ui, sans-serif;
+  --font-text: "Figtree Variable", "Figtree", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 400;
+  --display-tracking: -0.03em;
+  --display-tracking-xl: -0.04em;
+  --ly-scale: 0.98;
+}
+</style>
+<link rel="stylesheet" href="/assets/ui/base.css">
+<link rel="stylesheet" href="/assets/ui/chat/fragment.css">
+<link rel="stylesheet" href="/assets/ui/window/fragment.css">
+<link rel="stylesheet" href="/assets/ui/toggles/fragment.css">
+<link rel="stylesheet" href="/assets/ui/notify/fragment.css">
+<link rel="stylesheet" href="/assets/ui/checklist/fragment.css">
+<link rel="stylesheet" href="/assets/ui/terminal-run/fragment.css">
+<link rel="stylesheet" href="/assets/ui/code/fragment.css">
+<link rel="stylesheet" href="/assets/diagrams/diagram.css">
+<link rel="stylesheet" href="/assets/moments/letters-assemble/moment.css">
+<script src="/landing-boot.js"></script>
+<script src="/assets/backgrounds/backgrounds.js"></script>
+<link rel="modulepreload" href="/assets/moments/moments.js">
+<link rel="modulepreload" href="/assets/moments/lib.js">
+<link rel="modulepreload" href="/assets/moments/letters-assemble/moment.js">
+<!-- page CSS: only inside visuals, and one --p-h per card group -->
+<style>
+  .wh-logo { width: 28px; height: 28px; flex: none; }
+  .wh-logo circle { fill: var(--accent); }
+  .nav__logo { gap: var(--s-3); }
+  /* the hero window: Whisper's thread, cut by the frame's foot */
+  .hero__media .stage { position: absolute; inset: 0; }
+  .wh-amt { display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px; font: 500 13px/1.5 var(--font-mono); background: color-mix(in oklab, var(--u-accent, #5ab9fc) 16%, transparent); }
+  .wh-sig { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 13px; font-weight: 500; }
+  .wh-sig svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ui-chat .ui-agent { background: linear-gradient(135deg, #5ab9fc, #1d6fa8); }
+  /* app-frame (sections-library.md, app-frame) */
+  .app.ui { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); margin-top: var(--s-7); background: var(--u-bg); border: 1px solid var(--u-border); border-radius: var(--u-r); box-shadow: var(--u-shadow); }
+  .app > .app__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+  .app > .app__pane + .app__pane { border-left: 1px solid var(--u-line); }
+  .app > .app__pane > .ui-panel { width: 100%; border: 0; border-radius: 0; box-shadow: none; }
+  .app > .app__pane::after { content: ""; position: absolute; inset: auto 0 0 0; height: 64px; background: linear-gradient(transparent, var(--u-bg)); pointer-events: none; }
+  @media (min-width: 1024px) and (max-width: 1279px) { .app.ui { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); } }
+  @media (max-width: 1023px) {
+    .app.ui { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    .app > .app__pane--list { max-height: 252px; }
+    .app > .app__pane--list::after { display: none; }
+    .app .ui-win__side { display: none; }
+    .app .ui-win__body { grid-template-columns: minmax(0, 1fr); }
+    .app > .app__pane + .app__pane { border-left: 0; border-top: 1px solid var(--u-line); }
+  }
+  @media (max-width: 639px) {
+    .app.ui { grid-template-rows: minmax(0, 1fr); }
+    .app > .app__pane--list { display: none; }
+    .app > .app__pane + .app__pane { border-top: 0; }
+  }
+  #uses .panel, #how .panel { --p-h: 300px; }
+  @media (max-width: 639px) { #uses .panel { --p-h: 112px; } #how .panel { --p-h: 180px; } }
+  #promise .mo-la__sub { color: var(--ink); }
+  /* done checks read as passed, not struck out */
+  :is(#uses, #how) .ui-check.is-done .ui-check__label { text-decoration: none; color: var(--u-ink, inherit); }
+  .wh-facts { margin-top: var(--s-8); }
+  .close__word { font-family: var(--font-display); }
+  @media (min-width: 640px) and (max-width: 1279px) { #how { --h: 2 } }
+  @media (min-width: 1024px) and (max-width: 1279px) { #uses .panel { --p-h: 220px; } }
+</style>
+</head>
+<body>
+<!-- type: software (a post-quantum messenger and SDK for QoreChain)
+     deal: hero split, nav nav-centre, close close-word, footer footer-columns, rhythm dark-band, buttons arrow,
+           mark: the client's own logo (Whisper's bubble), palette: the client's own (start.mjs brand: near-black with
+           cornflower, the app's colours), type: gabarito (the app's own pairing), ground: sky behind UI, effect: none
+     moments: letters-assemble in #promise -->
+<header class="nav nav--centre">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#top">Skip to content</a>
+    <a class="nav__logo" href="#top"><svg class="wh-logo" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 4.5h20A3.5 3.5 0 0 1 29.5 8v13a3.5 3.5 0 0 1-3.5 3.5H13.2l-5.6 4.6a.9.9 0 0 1-1.5-.7v-3.9H6A3.5 3.5 0 0 1 2.5 21V8A3.5 3.5 0 0 1 6 4.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="14.5" r="2"/><circle cx="16" cy="14.5" r="2" opacity=".6"/><circle cx="22" cy="14.5" r="2" opacity=".28"/></svg>Whisper</a>
+    <nav class="nav__links" aria-label="Main">
+      <div class="nav__item"><a class="nav__link" href="#uses">Uses</a></div>
+      <div class="nav__item"><a class="nav__link" href="#how">Steps</a></div>
+      <div class="nav__item"><a class="nav__link" href="#security">Security</a></div>
+      <div class="nav__item">
+        <a class="nav__link" href="#developers">Developers <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <div class="nav__menu">
+          <div class="wrap grid">
+            <div class="menu-col span-3">
+              <p class="t-label">Build with Whisper</p>
+              <a href="#developers">Message button<span>One element, one script tag</span></a>
+              <a href="https://github.com/Investorquab/Whisper/blob/main/packages/sdk/README.md">SDK guide<span>Send, read and verify in code</span></a>
+            </div>
+            <div class="menu-col span-3">
+              <p class="t-label">How it is built</p>
+              <a href="#architecture">Architecture<span>Browser, QoreX and two contracts</span></a>
+              <a href="https://github.com/Investorquab/Whisper/blob/main/audit.md">Security audit<span>What we tried to break</span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav__item"><a class="nav__link" href="#questions">Questions</a></div>
+    </nav>
+    <div class="nav__actions">
+      <a class="btn btn--primary" href="/app/new">Send a message</a>
+    </div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Menu">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero hero--split" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text grid hero__grid">
+      <div class="hero__text span-5">
+        <p class="hero__kicker"><span class="dot" aria-hidden="true"></span>Live on QoreChain testnet</p>
+        <h1 id="hero-h">Post-quantum messenger for QoreChain wallets</h1>
+        <p class="hero__lead">Write to any QoreChain address. Whisper seals the message in your browser with ML‑KEM‑1024, QoreX signs the send with ML‑DSA‑87, and the chain keeps it.</p>
+        <div class="btn-row">
+          <a class="btn btn--primary" href="/app/new">Send a message<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+          <a class="btn btn--secondary" href="#how">See the steps</a>
+        </div>
+        <dl class="hero-facts">
+          <div><dt>Encryption</dt><dd>ML-KEM-1024</dd></div>
+          <div><dt>Signatures</dt><dd>ML-DSA-87</dd></div>
+          <div><dt>Fee a message</dt><dd>0.001 QOR</dd></div>
+        </dl>
+      </div>
+      <div class="hero__media span-6 start-7">
+        <div class="stage stage--fade-b"><div class="at-rise to-edge fit" style="--fit-max:440px;--ax:24px;--ay:48px;--ay-sm:24px">
+          <div class="ui ui-panel ui-chat" data-ui="chat" role="img" aria-label="A Whisper conversation: Carol offers to return 50 QOR sent by mistake, sends 0.05 QOR with a note, then signs a promise to return the rest by Friday.">
+            <div class="ui-head"><span class="ui-agent" aria-hidden="true"></span><div class="ui-title">Carol · qor1avne…7tzp</div><span class="ui-spacer"></span></div>
+            <div class="ui-chat__body">
+              <div class="ui-chat__day">Sealed with ML-KEM-1024</div>
+              <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">Hi, Carol here. I think I received 50 QOR from you by mistake. Want it back?</span></span></div>
+              <div class="ui-msg ui-msg--me"><span class="ui-msg__text">Yes please, it was meant for my other wallet.</span></div>
+              <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">Sending 0.05 QOR now as a first part, with this note.</span><span class="wh-amt">+0.05 QOR</span></span></div>
+              <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">I confirm I will return the remaining <b>49.95 QOR</b> by Friday.</span><span class="wh-sig"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg>Signed, checked against her key on QoreChain</span></span></div>
+            </div>
+            <div class="ui-chat__input"><span class="ui-chat__ph">Write a message</span><span class="ui-chat__send" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          </div>
+        </div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section class="section" id="inbox" aria-labelledby="inbox-h">
+    <div class="wrap">
+      <div class="grid">
+        <h2 id="inbox-h" class="span-5">The Whisper inbox, read from QoreChain</h2>
+        <p class="span-6 start-7">Conversations on the left, the open thread on the right. Whisper reads the envelopes from QoreChain and opens them in your browser. Contact requests wait until you accept.</p>
+      </div>
+      <div class="ui app fill" role="img" aria-label="Whisper's inbox: five conversations, one a contact request about a vault exploit, open beside its thread with a signed offer." data-ui-pause-host>
+        <div class="app__pane app__pane--list">
+          <div class="ui ui-panel ui-win" data-ui="window" data-open="New" data-work="Request" data-done="Read">
+            <div class="ui-win__bar">
+              <span class="ui-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="ui-win__crumb">Whisper <i>/</i> <b>Inbox</b></span>
+              <span class="ui-spacer"></span>
+              <span class="ui-win__search" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg><span class="ui-win__ph">Search</span></span>
+            </div>
+            <div class="ui-win__body">
+              <nav class="ui-win__side" aria-hidden="true">
+                <span class="ui-win__nav is-on"><svg class="ui-icon" viewBox="0 0 16 16"><path d="M2.5 9h3l1 1.5h3l1-1.5h3"/><path d="M2.5 9 4 3.5h8L13.5 9v3.5h-11z"/></svg>Inbox<em>5</em></span>
+                <span class="ui-win__nav"><svg class="ui-icon" viewBox="0 0 16 16"><circle cx="8" cy="6" r="2.5"/><path d="M3.5 13.5c.6-2.3 2.4-3.5 4.5-3.5s3.9 1.2 4.5 3.5"/></svg>Requests<em>1</em></span>
+                <span class="ui-win__nav"><svg class="ui-icon" viewBox="0 0 16 16"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg>Signed</span>
+                <span class="ui-win__label">Settings</span>
+                <span class="ui-win__nav"><span class="ui-win__hash">#</span>Blocked</span>
+              </nav>
+              <div class="ui-win__main">
+                <div class="ui-win__cols" aria-hidden="true"><span>From</span><span>Last message</span><span>Status</span><span>Age</span></div>
+                <ul class="ui-win__rows">
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="2">0x</span><span class="ui-win__who">0x9d91…61A5</span><span class="ui-win__sub">Can we talk in private about the vault?</span><span class="ui-win__st is-you" data-st>Request</span><span class="ui-win__age">3m</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="1">C</span><span class="ui-win__who">Carol</span><span class="ui-win__sub">Signed: 49.95 QOR back by Friday</span><span class="ui-win__st" data-st>New</span><span class="ui-win__age">9m</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="4">NM</span><span class="ui-win__who">Night Market</span><span class="ui-win__sub">Is Lattice at Night, No. 7 still free?</span><span class="ui-win__st" data-st>New</span><span class="ui-win__age">22m</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">@</span><span class="ui-win__who">@ada</span><span class="ui-win__sub">12 QOR for the domain, final offer</span><span class="ui-win__st is-done" data-st>Read</span><span class="ui-win__age">1h</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="5">q</span><span class="ui-win__who">qor18z3h…y6g4</span><span class="ui-win__sub">Thanks, received the 0.2 QOR</span><span class="ui-win__st is-done" data-st>Read</span><span class="ui-win__age">2h</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="1">0x</span><span class="ui-win__who">0x3575…b1a8</span><span class="ui-win__sub">Note to self: backup saved</span><span class="ui-win__st is-done" data-st>Read</span><span class="ui-win__age">1d</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="2">@</span><span class="ui-win__who">@mika</span><span class="ui-win__sub">Swap 40 QOR for the print?</span><span class="ui-win__st is-done" data-st>Read</span><span class="ui-win__age">2d</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="3">q</span><span class="ui-win__who">qor1nkg4…hfmd</span><span class="ui-win__sub">Request accepted</span><span class="ui-win__st is-done" data-st>Read</span><span class="ui-win__age">3d</span></li>
+                  <li class="ui-win__row" data-row><span class="ui-avatar" data-tone="4">0x</span><span class="ui-win__who">0x38a3…929d</span><span class="ui-win__sub">Unblocked you</span><span class="ui-win__st is-done" data-st>Read</span><span class="ui-win__age">4d</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="app__pane app__pane--open">
+          <div class="ui ui-panel ui-chat" data-ui="chat">
+            <div class="ui-head"><span class="ui-agent" aria-hidden="true"></span><div class="ui-title">0x9d91…61A5 · contact request</div><span class="ui-spacer"></span></div>
+            <div class="ui-chat__body">
+              <div class="ui-chat__day">You accepted this request</div>
+              <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">I found the bug in your vault and hold the funds. Can we talk in private?</span></span></div>
+              <div class="ui-msg ui-msg--me"><span class="ui-msg__text">Yes. Only this address can read what you write here. What do you propose?</span></div>
+              <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">I return 90% of the funds and keep 10% as a bounty.</span><span class="wh-sig"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg>Signed with ML-DSA-87</span></span></div>
+              <div class="ui-msg ui-msg--me"><span class="ui-msg__text">Agreed. Send the first part to the treasury and reply here.</span></div>
+              <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">First part sent. The rest follows in the next block.</span><span class="wh-amt">+0.05 QOR</span></span></div>
+              <div class="ui-msg ui-msg--me"><span class="ui-msg__text">Received. I will share your signed offer with our community.</span></div>
+            </div>
+            <div class="ui-chat__input"><span class="ui-chat__ph">Write a message</span><span class="ui-chat__send" aria-hidden="true"><svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 13V3.5M3.8 7.5 8 3.3l4.2 4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section g2" id="uses" aria-labelledby="uses-h">
+    <div class="wrap">
+      <div class="group">
+        <div class="section-head">
+          <h2 id="uses-h">4 uses for Whisper today. <span class="muted">Each one is a gap in wallets now.</span></h2>
+        </div>
+        <div class="grid">
+          <article class="card card--row span-6">
+            <h3>Reaches the owner of an address</h3>
+            <p>Sent funds to the wrong wallet? Support guides say ask the owner. Today that means a tiny transaction with a note anyone can read.</p>
+            <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:400px;--ax:max(24px, 50% - 200px);--ay:40px;--ay-sm:24px">
+              <div class="ui ui-panel ui-chat" data-ui="chat">
+                <div class="ui-head"><span class="ui-agent" aria-hidden="true"></span><div class="ui-title">To qor1avne…7tzp</div><span class="ui-spacer"></span></div>
+                <div class="ui-chat__body">
+                  <div class="ui-msg ui-msg--me"><span class="ui-msg__text">I sent you 50 QOR by mistake in block 10,358,201. Could you send it back?</span></div>
+                  <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">Found it. Returning it now.</span></span></div>
+                </div>
+              </div>
+            </div></div></div>
+          </article>
+          <article class="card card--row span-6">
+            <h3>Talks to an exploiter in private</h3>
+            <p>After the $197M Euler hack, both sides negotiated in public transaction data. About $177M came back. Whisper keeps that talk sealed.</p>
+            <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-right to-edge" style="--ax:32px;--ay:40px;--ay-sm:24px">
+              <div class="ui ui-panel ui-toggles" data-ui="toggles">
+                <div class="ui-head"><svg class="ui-icon ui-toggles__ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 13 4v3.6c0 3-2.1 5.4-5 6.6-2.9-1.2-5-3.6-5-6.6V4z"/><path d="m5.8 8 1.6 1.6 3-3.2"/></svg><div class="ui-title">Who may write to you</div><span class="ui-spacer"></span><div class="ui-meta" data-tg-count>2 of 3 on</div></div>
+                <ul class="ui-toggles__list">
+                  <li class="ui-tg"><span class="ui-tg__text"><span class="ui-tg__label">Request mode</span><span class="ui-tg__sub">Strangers send one contact request</span></span><button class="ui-switch is-on" type="button" role="switch" aria-checked="true" aria-label="Request mode"><i></i></button></li>
+                  <li class="ui-tg"><span class="ui-tg__text"><span class="ui-tg__label">Accept 0x9d91…61A5</span><span class="ui-tg__sub">Lets this address write freely</span></span><button class="ui-switch is-on" type="button" role="switch" aria-checked="true" aria-label="Accept 0x9d91…61A5"><i></i></button></li>
+                  <li class="ui-tg"><span class="ui-tg__text"><span class="ui-tg__label">Block 0x38a3…929d</span><span class="ui-tg__sub">The contract refuses its messages</span></span><button class="ui-switch" type="button" role="switch" aria-checked="false" aria-label="Block 0x38a3…929d"><i></i></button></li>
+                </ul>
+              </div>
+            </div></div></div>
+          </article>
+        </div>
+      </div>
+      <div class="grid">
+        <article class="card card--row span-6">
+          <h3>Closes a deal between two people</h3>
+          <p>QoreChain mainnet has no token pairs yet and QoreX swaps are off. Agree the price in Whisper and attach the QOR to the message.</p>
+          <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:400px;--ax:max(24px, 50% - 200px);--ay:calc(100% - 200px);--ay-sm:calc(100% - 180px)">
+            <div class="ui ui-notify" data-ui="notify">
+              <ul class="ui-notify__list" data-notify-list>
+                <li class="ui-note"><span class="ui-avatar ui-note__av" data-tone="2">@</span><span class="ui-note__text"><span class="ui-note__title">@mika attached 40 QOR<time>now</time></span><span class="ui-note__body">“Deal: 40 QOR for the print.”</span></span><span class="ui-btn ui-btn--sm ui-note__btn">Open</span></li>
+                <li class="ui-note"><span class="ui-avatar ui-note__av" data-tone="4">NM</span><span class="ui-note__text"><span class="ui-note__title">Night Market<time>22m</time></span><span class="ui-note__body">Asked about Lattice at Night, No. 7</span></span></li>
+                <li class="ui-note"><span class="ui-note__ico"><svg class="ui-icon" viewBox="0 0 16 16"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg></span><span class="ui-note__text"><span class="ui-note__title">Request accepted<time>1h</time></span><span class="ui-note__body">qor1nkg4…hfmd can write to you</span></span></li>
+              </ul>
+            </div>
+          </div></div></div>
+        </article>
+        <article class="card card--row span-6">
+          <h3>Proves who wrote a message</h3>
+          <p>Scammers copy names and avatars. A signed Whisper message is checked against the sender's ML-DSA-87 key in QoreChain's registry.</p>
+          <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:400px;--ax:max(24px, 50% - 200px);--ay:40px;--ay-sm:24px">
+            <div class="ui ui-panel ui-checks" data-ui="checklist">
+              <div class="ui-checks__head"><div class="ui-title">Proof check, no wallet needed</div><span class="ui-spacer"></span><div class="ui-meta" data-checks-count>4 of 4</div></div>
+              <div class="ui-checks__bar"><i data-checks-bar style="--k:1"></i></div>
+              <ul class="ui-checks__list">
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Signer's key found on QoreChain</span></li>
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">ML-DSA-87 signature valid</span></li>
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Text matches, character for character</span></li>
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Sent in block 10,359,617</span></li>
+              </ul>
+            </div>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how" style="--hm: 2" aria-labelledby="how-h">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="how-h">A message in 3 steps</h2>
+      </div>
+      <div class="grid">
+        <article class="card card--row span-4">
+          <span class="step-num">1</span>
+          <h3>Seal it in your browser</h3>
+          <p>ML-KEM-1024 encrypts the text to the recipient's published key, padded so its size says little.</p>
+          <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:320px;--ax:max(24px, 50% - 160px);--ay:32px;--ay-sm:24px">
+            <div class="ui ui-panel ui-chat" data-ui="chat">
+              <div class="ui-head"><span class="ui-agent" aria-hidden="true"></span><div class="ui-title">To Carol</div><span class="ui-spacer"></span></div>
+              <div class="ui-chat__body">
+                <div class="ui-chat__day">Key on QoreChain · sealing</div>
+                <div class="ui-msg ui-msg--me"><span class="ui-msg__text">Thanks. Friday works for me.</span></div>
+              </div>
+            </div>
+          </div></div></div>
+        </article>
+        <article class="card card--row span-4">
+          <span class="step-num">2</span>
+          <h3>Approve the send in QoreX</h3>
+          <p>QoreX opens a one-transaction window with an ML-DSA-87 signature and sends the envelope with a 0.001 QOR fee.</p>
+          <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:320px;--ax:max(24px, 50% - 160px);--ay:32px;--ay-sm:24px">
+            <div class="ui ui-panel ui-checks" data-ui="checklist">
+              <div class="ui-checks__head"><div class="ui-title">QoreX · approve</div><span class="ui-spacer"></span><div class="ui-meta" data-checks-count>3 of 3</div></div>
+              <div class="ui-checks__bar"><i data-checks-bar style="--k:1"></i></div>
+              <ul class="ui-checks__list">
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Window for 1 transaction</span></li>
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Only the Whisper mailbox</span></li>
+                <li class="ui-check is-done"><span class="ui-check__box"><svg viewBox="0 0 16 16"><path d="m4.5 8.2 2.3 2.3 4.7-5"/></svg></span><span class="ui-check__label">Tap again to approve</span></li>
+              </ul>
+            </div>
+          </div></div></div>
+        </article>
+        <article class="card card--row span-4">
+          <span class="step-num">3</span>
+          <h3>Read it from the chain</h3>
+          <p>The recipient's browser finds the envelope on QoreChain and opens it with a key nobody else holds.</p>
+          <div class="panel panel--flush"><div class="stage stage--fade-b"><div class="at-rise fit" style="--fit-max:320px;--ax:max(24px, 50% - 160px);--ay:32px;--ay-sm:24px">
+            <div class="ui ui-panel ui-chat" data-ui="chat">
+              <div class="ui-head"><span class="ui-agent" aria-hidden="true"></span><div class="ui-title">From 0x3575…b1a8</div><span class="ui-spacer"></span></div>
+              <div class="ui-chat__body">
+                <div class="ui-chat__day">Opened in this browser</div>
+                <div class="ui-msg ui-msg--bot"><span class="ui-agent ui-msg__av" aria-hidden="true"></span><span class="ui-msg__col"><span class="ui-chat__answer">Thanks. Friday works for me.</span></span></div>
+              </div>
+            </div>
+          </div></div></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="promise" data-moment="letters-assemble" aria-labelledby="promise-h">
+    <div class="wrap">
+      <h2 id="promise-h" class="mo-la__type">Security with no server</h2>
+      <p class="mo-la__sub">Messages sit on QoreChain as ciphertext. Only the recipient&rsquo;s inbox key and your own sealed copy can open them, and both keys stay encrypted in a browser.</p>
+      <ul class="rows wh-facts">
+        <li><span class="rows__name">Servers</span><span class="rows__value">None</span></li>
+        <li><span class="rows__name">On QoreChain</span><span class="rows__value">Ciphertext only</span></li>
+        <li><span class="rows__name">Inbox key</span><span class="rows__value">Encrypted in your browser</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section ground-inverse" id="security" aria-labelledby="security-h">
+    <div class="wrap">
+      <div class="grid fill">
+        <div class="span-5 stack-6">
+          <h2 id="security-h">8 attacks with a stolen classical key</h2>
+          <p class="t-lead">A quantum computer could one day derive a secp256k1 key. We gave a script only that key and tried eight attacks on testnet. QoreChain or Whisper refused every one.</p>
+          <a class="link" href="https://github.com/Investorquab/Whisper/blob/main/audit.md">Read the audit</a>
+        </div>
+        <div class="frame frame--split frame--fill frame--lit span-6 start-7">
+          <div class="stage stage--fade-b"><div class="at-rise to-edge" style="--w:88%;--ay:48px;--ay-sm:24px">
+            <div class="ui ui-panel ui-term" data-ui="terminal-run" data-ui-loop>
+              <div class="ui-term__head"><span class="ui-dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="ui-term__title">whisper/contracts</span><span class="ui-meta">testnet</span><span class="ui-spacer"></span></div>
+              <div class="ui-term__screen" data-term-screen>
+                <div class="ui-term__track" data-term-track>
+                  <div class="ui-term__ln ui-term__cmd"><span class="ui-term__cwd">~/contracts</span><span class="ui-term__sig">$</span><span class="ui-term__typed" data-term-cmd>pnpm attack:classical</span></div>
+                  <div class="ui-term__ln ui-term__meter" data-term-out data-term-meter><span class="ui-term__bar" style="--p:1"><i></i></span><span class="ui-term__count" data-term-count>8 of 8 attempts</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">EVM transfer to thief</span><span class="ui-term__n">blocked</span><span class="ui-term__t">chain</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Send as the victim</span><span class="ui-term__n">blocked</span><span class="ui-term__t">chain</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Classical-only MsgSend</span><span class="ui-term__n">blocked</span><span class="ui-term__t">chain</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Open window, fake ML-DSA</span><span class="ui-term__n">blocked</span><span class="ui-term__t">chain</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Replace the ML-DSA key</span><span class="ui-term__n">blocked</span><span class="ui-term__t">chain</span></div>
+                  <div class="ui-term__ln ui-term__log" data-term-out data-term-step><svg class="ui-term__tick" viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4"/></svg><span class="ui-term__path">Forge a signed message</span><span class="ui-term__n">blocked</span><span class="ui-term__t">app</span></div>
+                  <div class="ui-term__ln ui-term__gap" data-term-out aria-hidden="true"></div>
+                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">Attacks</span><span class="ui-term__val">8 blocked</span><span class="ui-term__dim">(8)</span></div>
+                  <div class="ui-term__ln ui-term__sum" data-term-out><span class="ui-term__key">ML-DSA key</span><span class="ui-term__val">unchanged</span><span class="ui-term__dim"></span></div>
+                  <div class="ui-term__ln ui-term__done" data-term-out data-term-done><span class="ui-term__ok"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 8.3 2.4 2.4 4.6-5"/></svg></span><b>Done</b><span class="ui-term__dim">qorechain-diana</span></div>
+                  <div class="ui-term__ln ui-term__cmd" data-term-next><span class="ui-term__cwd">~/contracts</span><span class="ui-term__sig">$</span><span class="ui-term__typed"></span><i class="ui-term__caret" aria-hidden="true"></i></div>
+                </div>
+              </div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="architecture" aria-labelledby="architecture-h">
+    <div class="wrap">
+      <div class="grid">
+        <h2 id="architecture-h" class="span-5">Whisper's architecture in 3 parts</h2>
+        <div class="span-6 start-7 stack-4">
+          <p>Your browser holds the keys, QoreX signs, and the WhisperMailbox contract on QoreChain stores every envelope with an index per address. Signatures are checked against QoreChain's PQC key registry.</p>
+          <a class="link" href="https://github.com/Investorquab/Whisper#architecture">See the architecture notes</a>
+        </div>
+      </div>
+      <div class="frame fill">
+        <div class="dg" data-dg-still data-diagram='{"layout":"lanes","pulse":"none","alt":"The browser seals the message, QoreX signs and sends it, and QoreChain stores the envelope, holds the signer&#39;s key and delivers it to the recipient.","input":{"label":"Browser","icon":"ui:monitor","sub":"ML-KEM-1024"},"core":{"label":"QoreX","icon":"ui:wallet"},"lanes":[{"label":"Mailbox","icon":"ui:database","done":true,"sub":"Envelope stored"},{"label":"Key registry","icon":"ui:key-round","done":true,"sub":"ML-DSA-87 key"},{"label":"Recipient","icon":"ui:mail-open","done":true,"sub":"Opens it"}]}'></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="questions" aria-labelledby="questions-h">
+    <div class="wrap">
+      <div class="grid">
+        <div class="span-5 stack-4">
+          <h2 id="questions-h">Questions</h2>
+          <p>What people ask before their first message.</p>
+        </div>
+        <div class="faq span-6 start-7">
+          <div class="faq__item"><h3>Who can read my messages?</h3><p>Only the holder of the recipient's inbox key, and you through your own sealed copy. The chain shows who wrote to whom, when, and the padded size.</p></div>
+          <div class="faq__item"><h3>What does a message cost?</h3><p>A 0.001 QOR fee plus gas. With QoreX's window transaction a send costs about 0.06 test QOR today.</p></div>
+          <div class="faq__item"><h3>What do I need to send one?</h3><p>QoreX on testnet with an Ethereum account (coin 60). Checking a signed message on the proof page needs no wallet.</p></div>
+          <div class="faq__item"><h3>Can strangers flood my inbox?</h3><p>Turn on request mode: unknown addresses can send one contact request until you accept them, and the contract refuses blocked senders.</p></div>
+                    <div class="faq__item"><h3>Is Whisper on mainnet?</h3><p>No. It runs on QoreChain testnet until the contract has an outside review.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="developers" aria-labelledby="developers-h">
+    <div class="wrap">
+      <div class="grid fill">
+        <div class="span-5 stack-6">
+          <h2 id="developers-h">Whisper SDK and message button</h2>
+          <p class="t-lead">Add one element and one script tag, and your page gets a button that opens Whisper addressed to the creator, with a draft.</p>
+          <p>The same SDK sends, reads and verifies messages in your own code, in TypeScript, with 29 tests.</p>
+          <a class="link" href="https://github.com/Investorquab/Whisper/blob/main/packages/sdk/README.md">Read the SDK guide</a>
+        </div>
+        <div class="frame frame--split frame--fill frame--lit span-6 start-7">
+          <div class="stage stage--fade-b"><div class="at-rise to-edge" style="--w:88%;--ay:48px;--ay-sm:24px">
+            <div class="ui ui-panel ui-code" data-ui="code">
+              <div class="ui-code__tabs"><span class="ui-code__tab is-on"><i class="ui-code__lang">TS</i>listing.ts</span><span class="ui-code__tab"><i class="ui-code__lang">JS</i>whisper-button.js</span><span class="ui-spacer"></span><span class="ui-chip ui-chip--plain ui-code__chip" data-code-chip>SDK</span></div>
+              <pre class="ui-code__pre"><code><span class="ui-code__ln" data-n="1"><span class="k">import</span> { mountMessageButton }</span>
+<span class="ui-code__ln" data-n="2">  <span class="k">from</span> <span class="s">"@whisper/sdk"</span>;</span>
+<span class="ui-code__ln" data-n="3"></span>
+<span class="ui-code__ln" data-n="4" data-note="Any qor1 or 0x address.">mountMessageButton(card, {</span>
+<span class="ui-code__ln is-mark" data-n="5">  to: artist.wallet,</span>
+<span class="ui-code__ln" data-n="6">  appUrl: WHISPER_URL,</span>
+<span class="ui-code__ln" data-n="7">  label: <span class="s">"Message the artist"</span>,</span>
+<span class="ui-code__ln" data-n="8" data-note="Shown as the site's claim.">  source: <span class="s">"Night Market"</span>,</span>
+<span class="ui-code__ln" data-n="9">  draft: <span class="s">"Is No. 7 for sale?"</span>,</span>
+<span class="ui-code__ln" data-n="10">});</span></code></pre>
+              <div class="ui-code__hint" data-code-hint><span class="ui-dot"></span><span data-code-text>Opens Whisper in a popup, where QoreX can sign.</span></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  
+</main>
+
+<footer class="footer closing" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--word">
+      <div class="section-head--split">
+        <div><h2 id="close-h">Send your first Whisper message</h2><p class="t-lead">On QoreChain testnet, with test QOR from the faucet.</p></div>
+        <a class="btn btn--primary" href="/app/new">Send a message<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+      </div>
+      <p class="close__word" aria-hidden="true">Whisper</p>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-4 stack-4">
+          <a class="nav__logo" href="#top"><svg class="wh-logo" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M6 4.5h20A3.5 3.5 0 0 1 29.5 8v13a3.5 3.5 0 0 1-3.5 3.5H13.2l-5.6 4.6a.9.9 0 0 1-1.5-.7v-3.9H6A3.5 3.5 0 0 1 2.5 21V8A3.5 3.5 0 0 1 6 4.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="14.5" r="2"/><circle cx="16" cy="14.5" r="2" opacity=".6"/><circle cx="22" cy="14.5" r="2" opacity=".28"/></svg>Whisper</a>
+          <p class="footer__lede">Sealed messages between QoreChain addresses.</p>
+        </div>
+        <div class="span-2 footer__col"><h3>Uses</h3><ul><li><a href="#inbox">Inbox</a></li><li><a href="#uses">Four jobs</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Steps</h3><ul><li><a href="#how">Sending</a></li><li><a href="/check">Proof page</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Security</h3><ul><li><a href="#security">Attack test</a></li><li><a href="#architecture">Architecture</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Developers</h3><ul><li><a href="#developers">Message button</a></li><li><a href="/demo/">Demo shop</a></li><li><a href="https://github.com/Investorquab/Whisper">Source code</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 Whisper &nbsp; <a href="https://github.com/Investorquab/Whisper/blob/main/LICENSE">MIT licence</a></span>
+        <div class="socials"></div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<nav class="actionbar" aria-label="Quick actions">
+  <a class="btn btn--primary" href="/app/new">Send a message</a>
+</nav>
+
+<script type="module" src="/assets/system.js"></script>
+<script type="module" src="/assets/motion/motion.js"></script>
+<script type="module" src="/assets/layout/layout.js"></script>
+<script type="module" src="/assets/diagrams/mount.js"></script>
+</body>
 </html>

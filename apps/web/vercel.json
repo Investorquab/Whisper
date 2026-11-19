@@ -10,8 +10,24 @@
       "destination": "https://api-testnet.qore.host/qorechain/pqc/v1/:path*"
     },
     {
-      "source": "/((?!api/|assets/|favicon).*)",
-      "destination": "/index.html"
+      "source": "/app",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/to/:path*",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/setup",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/check",
+      "destination": "/app.html"
     }
   ],
   "headers": [
@@ -41,7 +57,7 @@
       ]
     },
     {
-      "source": "/((?!demo/).*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "Content-Security-Policy",
@@ -49,5 +65,6 @@
         }
       ]
     }
-  ]
+  ],
+  "cleanUrls": false
 }
