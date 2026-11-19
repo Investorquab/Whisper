@@ -46,7 +46,7 @@ function message(error: unknown): string {
   return m ? m.split("\n")[0]! : "Something went wrong. Try again.";
 }
 
-export function SetupPage() {
+export function SetupPage({ returnTo = "/app" }: { returnTo?: string }) {
   const s = useSession();
   const navigate = useNavigate();
 
@@ -75,7 +75,7 @@ export function SetupPage() {
     return (
       <div className="setup setup--compact">
         <section className="setup__panel card" aria-live="polite">
-          <SetupBody onReady={() => navigate("/app")} />
+          <SetupBody onReady={() => navigate(returnTo, { replace: true })} />
         </section>
       </div>
     );
@@ -90,7 +90,7 @@ export function SetupPage() {
         <Steps steps={STEPS} current={current} done={done} />
       </aside>
       <section className="setup__panel card" aria-live="polite">
-        <SetupBody onReady={() => navigate("/app")} />
+        <SetupBody onReady={() => navigate(returnTo, { replace: true })} />
       </section>
     </div>
   );

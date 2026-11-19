@@ -1,4 +1,4 @@
-import { WhisperClient, inboxKeysFromSeed, keyFingerprint, type InboxKeys, type KeyRecord } from "@whisper/sdk";
+import { QORECHAIN_TESTNET, WhisperClient, inboxKeysFromSeed, keyFingerprint, type InboxKeys, type KeyRecord } from "@whisper/sdk";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { connect as connectWallet, readAccount, waitForQorex, type Qorex, type WalletAccount } from "../lib/qorex";
 import { loadVault, openVault, type VaultRecord } from "../lib/vault";
@@ -36,7 +36,11 @@ export function SessionProvider({ children, client: injected }: { children: Reac
   const [keys, setKeys] = useState<InboxKeys>();
   const accountRef = useRef<string | undefined>(undefined);
 
-  const client = useMemo(() => injected ?? new WhisperClient({ provider: qorex?.evm }), [injected, qorex]);
+  // QoreChain's REST API is reached through a same-origin rewrite (it sends no CORS headers).
+  const client = useMemo(
+    () => injected ?? new WhisperClient({ provider: qorex?.evm, network: { ...QORECHAIN_TESTNET, rest: `${window.location.origin}/api/qore` } }),
+    [injected, qorex],
+  );
 
   const loadAccountState = useCallback(
     async (acct: WalletAccount | undefined) => {

@@ -51,3 +51,13 @@ export {
 } from "./message.js";
 export { QORECHAIN_TESTNET, type WhisperNetwork } from "./networks.js";
 export { fetchChainKemKey, fetchPqcPublicKey } from "./rest.js";
+export {
+  QOREX_HANDLE_REGISTRY,
+  QOREX_HANDLE_REGISTRY_KEY,
+  isHandle,
+  normalizeHandle,
+  resolveHandle,
+  reverseHandle,
+  verifyHandleRecord,
+  type HandleRecord,
+} from "./handles.js";

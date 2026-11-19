@@ -1,4 +1,5 @@
-import { Inbox as InboxIcon } from "lucide-react";
+import { Inbox as InboxIcon, PenSquare } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Address } from "../components/Address";
 import { useSession } from "../state/session";
 
@@ -12,6 +13,9 @@ export function InboxPage() {
       <p className="muted">
         Messages to <Address value={s.account!.evmAddress} /> are sealed to your key and stored on QoreChain.
       </p>
+      <Link to="/app/new" className="btn btn--primary btn--md">
+        <PenSquare aria-hidden="true" className="btn__icon" /> New message
+      </Link>
     </div>
   );
 }

@@ -65,6 +65,9 @@ importers:
       fake-indexeddb:
         specifier: ^6.0.0
         version: 6.2.8
+      https-proxy-agent:
+        specifier: 7.0.6
+        version: 7.0.6
       jsdom:
         specifier: ^25.0.1
         version: 25.0.1
@@ -108,6 +111,12 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@noble/curves':
+        specifier: 2.4.0
+        version: 2.4.0
+      '@noble/hashes':
+        specifier: 2.4.0
+        version: 2.4.0
       '@qorechain/qoreseal':
         specifier: 0.1.0
         version: 0.1.0
