@@ -1,0 +1,22 @@
+# Private working material (plans, video script, submission notes): never published
+private/
+
+# Dependencies and build output
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Local tooling
+.taste-skill/
+.vercel/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store

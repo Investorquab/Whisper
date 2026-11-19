@@ -1,0 +1,11 @@
+{
+  "network": "qorechain-diana",
+  "evmChainId": 9800,
+  "WhisperMailbox": {
+    "address": "0xd837298637f4459a3981b540d5543a4423add801",
+    "deployBlock": 10350669,
+    "deployTx": "0x24bfeeeccf307279d26eb1400a7b7d0200ba9bf091b89311d940b746fb56e68b",
+    "messageFeeWei": "1000000000000000",
+    "feeRecipient": "0x35750cc522969F297F421E411e0Cb4493572b1a8"
+  }
+}
