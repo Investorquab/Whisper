@@ -4,6 +4,8 @@
 
 Built for the QoreChain *Build Before Q-Day* Developer Fest, Encrypted Apps track. Live on QoreChain testnet (`qorechain-diana`).
 
+**Try it: [whisper-qorex.vercel.app](https://whisper-qorex.vercel.app)** · [proof checker](https://whisper-qorex.vercel.app/check) · [demo shop with the message button](https://whisper-qorex.vercel.app/demo/)
+
 ![Whisper landing page](docs/screenshots/landing.jpg)
 
 | | |
@@ -157,7 +159,7 @@ One element and one script tag:
   data-whisper-source="Night Market"
   data-whisper-draft="Hi! Is this print still for sale?"
 ></span>
-<script src="https://YOUR-WHISPER-DEPLOYMENT/whisper-button.js" defer></script>
+<script src="https://whisper-qorex.vercel.app/whisper-button.js" defer></script>
 ```
 
 Or from code:
@@ -167,7 +169,7 @@ import { mountMessageButton, WhisperClient, verifySignedMessage } from "@whisper
 
 mountMessageButton(document.getElementById("contact")!, {
   to: "qor1avnejacyrgz607gfh5y5ysgldq4mtqwcy67tzp",
-  appUrl: "https://YOUR-WHISPER-DEPLOYMENT",
+  appUrl: "https://whisper-qorex.vercel.app",
   source: "My NFT market",
 });
 

@@ -148,9 +148,9 @@ Scripts: `private/tools/e2e-link.cjs`, `e2e-link-gate.cjs` and `qx-send.cjs`.
 | --- | --- | --- | --- |
 | App under a strict Content-Security-Policy (no inline script, `connect-src` limited to self and the QoreChain EVM/REST hosts), served with the header and used with real QoreX | Works, no violations | QoreX provider present, unlock works, 8 messages decrypt, 2 signatures verify, 0 CSP violations | Pass after **F-3** |
 | Clickjacking | Cannot be framed | `X-Frame-Options: DENY` and `frame-ancestors 'none'` | Configured |
-| A site that opened Whisper keeps a handle to the window | Handle cut | `Cross-Origin-Opener-Policy: same-origin` | Configured (**F-4**) |
+| A site that opened Whisper keeps a handle to the window | Handle cut | `Cross-Origin-Opener-Policy: same-origin`, served by the live site | Pass (**F-4**) |
 
-The CSP test injected the exact header from `apps/web/vercel.json` into a local build. COOP and the other headers only take effect on the deployed site, so they are on the post-deployment checklist.
+The CSP test first injected the exact header from `apps/web/vercel.json` into a local build; the live site now serves it, COOP and the other headers, and a signed send there showed 0 violations (see Open items).
 
 ## Findings
 
@@ -159,7 +159,7 @@ The CSP test injected the exact header from `apps/web/vercel.json` into a local 
 | F-1 | Medium (integrity of UI) | Linking a main account whose ML-DSA key is not on chain showed "Main account linked", but every reader ignored the link, so messages to that address would not arrive. | Setup checks `pqcKeyStatus` before signing and explains how to register the key. After publishing, the app reads the link back with `getLinkedInbox` and only reports success if it verifies. | Pass (section 6) |
 | F-2 | Low (phishing aid) | The "You came here from …" line and the draft came straight from the URL. A site could pose as "Whisper Support" with a long label, and a hand-written URL bypassed the SDK's length limits. | The label is whitespace-collapsed, capped at 60 chars, quoted, and worded as the site's own claim; the draft is capped at 500. Both are rendered as text. | Pass (section 4) |
 | F-3 | Medium (defence in depth) | No Content-Security-Policy. The inbox key is decrypted in the page, so any script injection would be serious. | Strict CSP in `vercel.json`. The inline theme script moved to `/theme.js` so `script-src 'self'` needs no exceptions. `/demo/` is excluded because it is a stand-in third-party page. | Pass (section 7) |
-| F-4 | Low | `openCompose` popups kept `window.opener`, so the opening site could later navigate the Whisper window to a look-alike page. | `Cross-Origin-Opener-Policy: same-origin` on Whisper. | Verify after deployment |
+| F-4 | Low | `openCompose` popups kept `window.opener`, so the opening site could later navigate the Whisper window to a look-alike page. | `Cross-Origin-Opener-Policy: same-origin` on Whisper. | Pass: header served by the live site |
 | F-5 | Info | A damaged backup was reported as a wrong password. | The message now names both causes. AES-GCM cannot tell them apart. | Pass (section 5) |
 
 ## Limitations (accepted, documented)
@@ -175,7 +175,7 @@ The CSP test injected the exact header from `apps/web/vercel.json` into a local 
 ## Open items
 
 - **QoreChain's own audit service (QCAI).** We planned a two-pass review of `WhisperMailbox` with QoreChain's audit tooling. It needs a signed-in QoreChain dashboard account, so it has not been run. This audit does not claim it.
-- **Post-deployment checks.** Confirm the security headers on the deployed URL (`curl -I`), repeat one send under the production CSP, and run the phone test.
+- **Post-deployment checks: done 19 Nov 2026** on https://whisper-qorex.vercel.app. `curl -I` shows the CSP, `Cross-Origin-Opener-Policy: same-origin`, `X-Frame-Options: DENY`, `nosniff` and `no-referrer`; every app route and both proxies answer, and unknown paths return 404. With the real QoreX extension on the live site we connected, restored the inbox from its encrypted backup (8 messages decrypted, 2 signatures verified), and sent a signed message to Carol with 0 CSP violations; Carol decrypted it as message #15. The phone test is still to do.
 - **External review.** None yet.
 
 ## Reproducing

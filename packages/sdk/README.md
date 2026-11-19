@@ -23,7 +23,7 @@ Put an element where the button should go and load the script from your Whisper 
   data-whisper-source="Night Market"
   data-whisper-draft="Hi! I'm interested in this print."
 ></span>
-<script src="https://YOUR-WHISPER-APP/whisper-button.js" defer></script>
+<script src="https://whisper-qorex.vercel.app/whisper-button.js" defer></script>
 ```
 
 | Attribute | Required | Meaning |
@@ -48,15 +48,15 @@ import { mountMessageButton, composeUrl, openCompose } from "@whisper/sdk";
 
 const remove = mountMessageButton(document.getElementById("contact")!, {
   to: "qor1avnejacyrgz607gfh5y5ysgldq4mtqwcy67tzp",
-  appUrl: "https://YOUR-WHISPER-APP",
+  appUrl: "https://whisper-qorex.vercel.app",
   label: "Message the seller",
   source: "My NFT market",
   draft: "Hi, is token #42 still for sale?",
 });
 
 // Or build your own button:
-const href = composeUrl({ to: "0x…", appUrl: "https://YOUR-WHISPER-APP" });
-button.onclick = () => openCompose({ to: "0x…", appUrl: "https://YOUR-WHISPER-APP" }) ?? window.open(href);
+const href = composeUrl({ to: "0x…", appUrl: "https://whisper-qorex.vercel.app" });
+button.onclick = () => openCompose({ to: "0x…", appUrl: "https://whisper-qorex.vercel.app" }) ?? window.open(href);
 ```
 
 ### React
@@ -67,7 +67,7 @@ import { useEffect, useRef } from "react";
 
 export function MessageCreator({ to }: { to: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => mountMessageButton(ref.current!, { to, appUrl: "https://YOUR-WHISPER-APP" }), [to]);
+  useEffect(() => mountMessageButton(ref.current!, { to, appUrl: "https://whisper-qorex.vercel.app" }), [to]);
   return <span ref={ref} />;
 }
 ```

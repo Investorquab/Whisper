@@ -1,7 +1,7 @@
 /**
  * Drop-in script for sites without a bundler:
- *   <span data-whisper-to="0x…" data-whisper-app="https://your-whisper.app"></span>
- *   <script src="https://your-whisper.app/whisper-button.js" defer></script>
+ *   <span data-whisper-to="0x…" data-whisper-app="https://whisper-qorex.vercel.app"></span>
+ *   <script src="https://whisper-qorex.vercel.app/whisper-button.js" defer></script>
  * The script finds every [data-whisper-to] element and renders a "Message the creator" button.
  */
 import { autoMountMessageButtons } from "./button.js";
