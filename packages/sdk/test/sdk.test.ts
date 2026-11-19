@@ -228,6 +228,10 @@ describe("helpers", () => {
     expect(explainError(new Error("execution reverted: custom error RequestOnly()")).code).toBe("REQUEST_ONLY");
     expect(explainError(new Error("QoreX: transaction rejected")).code).toBe("USER_REJECTED");
     expect(explainError(new Error("boom")).code).toBe("NETWORK");
+    // QoreChain returns custom-error data; viem nests it several levels deep.
+    const nested = { message: "Execution reverted for an unknown reason.", cause: { cause: { error: { code: 3, message: "execution reverted", data: "0x96110ff9" } } } };
+    expect(explainError(nested).code).toBe("REQUEST_ONLY");
+    expect(explainError({ message: "x", cause: { data: { data: "0x097ecfa0" } } }).code).toBe("SENDER_BLOCKED");
   });
 });
 

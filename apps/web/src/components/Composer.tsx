@@ -1,5 +1,5 @@
 import { MAX_BODY_LENGTH, explainError, signedStatement, type Recipient, type WhisperPayload } from "@whisper/sdk";
-import { ExternalLink, FileSignature, Paperclip, Send } from "lucide-react";
+import { ExternalLink, FileSignature, Paperclip, Send, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { formatEther, parseEther } from "viem";
 import { signStatement, WalletError } from "../lib/qorex";
@@ -23,11 +23,15 @@ export function Composer({
   recipient,
   replyTo,
   initialDraft = "",
+  replyPreview,
+  onCancelReply,
   onSent,
   compact,
 }: {
   recipient?: Recipient;
   replyTo?: string;
+  replyPreview?: string;
+  onCancelReply?: () => void;
   initialDraft?: string;
   onSent?: (info: SentInfo) => void;
   compact?: boolean;
@@ -79,6 +83,7 @@ export function Composer({
       setPhase("confirming");
       await s.client.waitFor(hash);
       setSent({ hash, request: requestOnly });
+      onCancelReply?.();
       onSent?.({ hash, payload, recipient, attached: requestOnly ? 0n : attach });
       setBody("");
       setAmount("");
@@ -97,6 +102,15 @@ export function Composer({
 
   return (
     <form className={`composer ${compact ? "composer--compact" : ""}`} onSubmit={submit} noValidate>
+      {replyTo && replyPreview && (
+        <div className="composer__reply">
+          <span className="muted small">Replying to</span>
+          <span className="composer__reply-text">{replyPreview}</span>
+          <button type="button" className="icon-btn" aria-label="Cancel reply" onClick={onCancelReply}>
+            <X aria-hidden="true" />
+          </button>
+        </div>
+      )}
       <label htmlFor={`${ids}-body`} className="sr-only">
         Message
       </label>

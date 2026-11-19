@@ -430,6 +430,18 @@ export class WhisperClient {
     return this.sendTransaction(from, encodeFunctionData({ abi: whisperMailboxAbi, functionName: "setBlocked", args: [toEvmAddress(sender), blocked] }));
   }
 
+  /** How `owner`'s inbox treats `sender`: request mode, and whether the sender is allowed or blocked. */
+  async contactStatus(owner: string, sender: string): Promise<{ requestMode: boolean; allowed: boolean; blocked: boolean }> {
+    const o = toEvmAddress(owner);
+    const s = toEvmAddress(sender);
+    const [requestMode, allowed, blocked] = await Promise.all([
+      this.publicClient.readContract({ address: this.network.mailbox, abi: whisperMailboxAbi, functionName: "requestMode", args: [o] }),
+      this.publicClient.readContract({ address: this.network.mailbox, abi: whisperMailboxAbi, functionName: "isAllowed", args: [o, s] }),
+      this.publicClient.readContract({ address: this.network.mailbox, abi: whisperMailboxAbi, functionName: "isBlocked", args: [o, s] }),
+    ]);
+    return { requestMode, allowed, blocked };
+  }
+
   /** Contact policy of an inbox. */
   async policy(account: string): Promise<{ requestMode: boolean }> {
     const requestMode = await this.publicClient.readContract({ address: this.network.mailbox, abi: whisperMailboxAbi, functionName: "requestMode", args: [toEvmAddress(account)] });
@@ -475,13 +487,28 @@ const REVERT_TEXT: Record<string, string> = {
   ProofTooLarge: "The signed card is too large.",
 };
 
+/** Finds revert data (0x + selector…) anywhere in a wallet or viem error chain. */
+function findRevertData(error: unknown, depth = 0): Hex | undefined {
+  if (!error || typeof error !== "object" || depth > 8) return undefined;
+  const e = error as Record<string, unknown>;
+  for (const key of ["data", "raw"]) {
+    const v = e[key];
+    if (typeof v === "string" && /^0x[0-9a-fA-F]{8,}$/.test(v)) return v as Hex;
+  }
+  for (const key of ["data", "cause", "error", "info"]) {
+    const found = findRevertData(e[key], depth + 1);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 /** Turns wallet and contract errors into WhisperErrors with a readable message. */
 export function explainError(error: unknown): WhisperError {
   if (isWhisperError(error)) return error;
   const e = error as { code?: number; message?: string; data?: unknown; cause?: unknown };
   const message = String(e?.message ?? error);
   if (e?.code === 4001 || /reject|denied|cancel/i.test(message)) return new WhisperError("USER_REJECTED", "You cancelled the request in your wallet", error);
-  const data = typeof e?.data === "string" ? (e.data as Hex) : typeof (e?.data as { data?: unknown })?.data === "string" ? ((e.data as { data: Hex }).data) : undefined;
+  const data = findRevertData(error);
   if (data && data.length >= 10) {
     try {
       const decoded = decodeErrorResult({ abi: whisperMailboxAbi, data });
