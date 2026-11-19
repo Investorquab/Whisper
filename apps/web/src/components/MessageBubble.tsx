@@ -142,7 +142,7 @@ export function MessageBubble({
               <Share2 aria-hidden="true" />
             </button>
           )}
-          <a className="msg__action msg__action--link" href={s.client.txUrl(message.item.txHash)} target="_blank" rel="noreferrer">
+          <a className="msg__action msg__action--link" href={s.client.blockUrl(message.item.blockNumber)} title={`Block ${message.item.blockNumber.toString()} on QoreChain's explorer (choose Testnet at the top if it opens on Mainnet). EVM transaction ${message.item.txHash}`} target="_blank" rel="noreferrer">
             On chain
           </a>
           {picker && (

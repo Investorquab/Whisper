@@ -449,6 +449,15 @@ export class WhisperClient {
   }
 
   /** Explorer link for a transaction. */
+  /**
+   * The explorer page of the block that holds a transaction. QoreChain's explorer finds a transaction by its
+   * Cosmos hash, which differs from the EVM hash a wallet returns, so Whisper links the block, which lists it.
+   */
+  blockUrl(block: bigint | number): string {
+    return `${this.network.explorer}/block/${block.toString()}`;
+  }
+
+  /** @deprecated The explorer cannot open an EVM transaction hash; use {@link blockUrl}. */
   txUrl(hash: string): string {
     return `${this.network.explorer}/tx/${hash}`;
   }

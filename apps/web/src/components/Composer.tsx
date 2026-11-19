@@ -44,7 +44,7 @@ export function Composer({
   const [sign, setSign] = useState(false);
   const [phase, setPhase] = useState<"idle" | "signing" | "sending" | "confirming">("idle");
   const [error, setError] = useState<string>();
-  const [sent, setSent] = useState<{ hash: string; request: boolean }>();
+  const [sent, setSent] = useState<{ hash: string; block: bigint; request: boolean }>();
 
   useEffect(() => {
     if (!sent || !compact) return;
@@ -87,8 +87,8 @@ export function Composer({
       setPhase("sending");
       const hash = await s.client.send({ from: s.account.evmAddress, recipient, payload, senderKeys: s.keys, attach: requestOnly ? 0n : attach });
       setPhase("confirming");
-      await s.client.waitFor(hash);
-      setSent({ hash, request: requestOnly });
+      const receipt = await s.client.waitFor(hash);
+      setSent({ hash, block: receipt.blockNumber, request: requestOnly });
       onCancelReply?.();
       onSent?.({ hash, payload, recipient, attached: requestOnly ? 0n : attach });
       setBody("");
@@ -171,7 +171,7 @@ export function Composer({
       )}
       {error && <Notice tone="danger" title="Not sent">{error}</Notice>}
       {sent && (
-        <Notice key={sent.hash} toast={compact} tone="success" title={sent.request ? "Contact request sent" : "Sent"} action={<a href={s.client.txUrl(sent.hash)} target="_blank" rel="noreferrer">View on the explorer <ExternalLink className="inline-icon" aria-hidden="true" /></a>}>
+        <Notice key={sent.hash} toast={compact} tone="success" title={sent.request ? "Contact request sent" : "Sent"} action={<a href={s.client.blockUrl(sent.block)} target="_blank" rel="noreferrer" title="Choose Testnet at the top of the explorer if it opens on Mainnet">View block on the explorer <ExternalLink className="inline-icon" aria-hidden="true" /></a>}>
           Sealed with ML-KEM-1024 and stored on QoreChain.
         </Notice>
       )}

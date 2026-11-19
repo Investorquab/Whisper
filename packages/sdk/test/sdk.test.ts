@@ -27,6 +27,7 @@ import {
   verifySignedMessage,
   verifyStatementSignature,
   type WhisperPayload,
+  WhisperClient,
 } from "../src/index.js";
 
 const CHAIN = "qorechain-diana";
@@ -234,6 +235,10 @@ describe("helpers", () => {
       { fromBlock: 25_000n, toBlock: 25_000n },
     ]);
     expect(blockSpans([], 10_000n)).toEqual([]);
+  });
+
+  it("links a message to its block on QoreChain's explorer (the explorer cannot open EVM hashes)", () => {
+    expect(new WhisperClient().blockUrl(10_375_584n)).toBe("https://explore.qore.network/block/10375584");
   });
 
   it("builds a compose link for 'Message the creator'", () => {
