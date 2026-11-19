@@ -89,12 +89,21 @@ importers:
       '@cosmjs/stargate':
         specifier: ^0.39.0
         version: 0.39.0
+      '@noble/curves':
+        specifier: 2.4.0
+        version: 2.4.0
       '@qorechain/evm':
         specifier: 0.14.0
         version: 0.14.0(viem@2.58.1(typescript@5.9.3))
+      '@qorechain/qoresign':
+        specifier: 0.2.0
+        version: 0.2.0
       '@qorechain/sdk':
         specifier: 0.14.0
         version: 0.14.0(viem@2.58.1(typescript@5.9.3))
+      '@whisper/sdk':
+        specifier: workspace:*
+        version: link:../packages/sdk
       viem:
         specifier: ^2.47.6
         version: 2.58.1(typescript@5.9.3)
@@ -108,6 +117,8 @@ importers:
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
+
+  examples/creator-demo: {}
 
   packages/sdk:
     dependencies:

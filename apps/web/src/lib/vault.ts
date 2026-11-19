@@ -110,7 +110,7 @@ export async function openVault(record: VaultRecord, password: string): Promise<
     );
     return new Uint8Array(seed);
   } catch {
-    throw new VaultError("WRONG_PASSWORD", "That password does not unlock this inbox.");
+    throw new VaultError("WRONG_PASSWORD", "That password does not unlock this inbox, or the backup file is damaged.");
   }
 }
 

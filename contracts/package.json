@@ -8,12 +8,16 @@
     "lint": "forge fmt --check",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "deploy:testnet": "tsx --env-file=.env script/deploy.ts",
-    "abi": "forge build && node script/export-abi.mjs"
+    "abi": "forge build && node script/export-abi.mjs",
+    "attack:classical": "tsx script/attack-classical-key.ts"
   },
   "dependencies": {
     "@cosmjs/stargate": "^0.39.0",
+    "@noble/curves": "2.4.0",
     "@qorechain/evm": "0.14.0",
+    "@qorechain/qoresign": "0.2.0",
     "@qorechain/sdk": "0.14.0",
+    "@whisper/sdk": "workspace:*",
     "viem": "^2.47.6"
   },
   "devDependencies": {

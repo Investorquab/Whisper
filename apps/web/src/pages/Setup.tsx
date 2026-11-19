@@ -201,6 +201,39 @@ function MainAccountStep() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [signed, setSigned] = useState(Boolean(getItem(PENDING_LINK_KEY)));
+  // A link is only trusted when its ML-DSA-87 signature checks against the main account's key registered on
+  // QoreChain. QoreX registers that key the first time the account sends a transaction.
+  const [pqc, setPqc] = useState<"checking" | "ok" | "missing">("checking");
+  useEffect(() => {
+    let live = true;
+    s.client
+      .pqcKeyStatus(account.qorAddress)
+      .then((r) => live && setPqc(r.registered ? "ok" : "missing"))
+      .catch(() => live && setPqc("missing"));
+    return () => {
+      live = false;
+    };
+  }, [s.client, account.qorAddress]);
+
+  if (inbox && !signed && pqc === "checking") return <Centered><Spinner label="Checking your main account" /></Centered>;
+
+  if (inbox && !signed && pqc === "missing") {
+    return (
+      <div className="stack">
+        <PanelHead icon={<Link2 />} title="Link your main account" subtitle="One thing first." />
+        <p>
+          Your main account <Address value={account.qorAddress} /> has no ML-DSA-87 key on QoreChain yet. Whisper only trusts a link it can check against that key, so the link would be ignored.
+        </p>
+        <ol className="howto">
+          <li>In QoreX, on this main account, send a small amount of QOR (0.01 is enough) to your Ethereum account <Address value={inbox} />. QoreX registers the account's ML-DSA-87 key with that first transaction.</li>
+          <li>Come back and check again.</li>
+        </ol>
+        <Button variant="secondary" onClick={() => { setPqc("checking"); void s.client.pqcKeyStatus(account.qorAddress).then((r) => setPqc(r.registered ? "ok" : "missing"), () => setPqc("missing")); }}>
+          Check again
+        </Button>
+      </div>
+    );
+  }
 
   if (inbox && !signed) {
     return (
@@ -542,6 +575,12 @@ function PublishLinkStep({ proofJson }: { proofJson: string }) {
               const hash = await s.client.link(s.account!.evmAddress, proof!.account, { v: 1, statement: proof!.statement, signature: proof!.signature });
               await s.client.waitFor(hash);
               setItem(PENDING_LINK_KEY, undefined);
+              const linked = await s.client.getLinkedInbox(proof!.account);
+              if (linked?.toLowerCase() !== s.account!.evmAddress.toLowerCase()) {
+                throw new Error(
+                  "The link is on chain, but its signature does not check against the main account's ML-DSA-87 key on QoreChain, so senders will ignore it. Send one transaction from the main account in QoreX to register its key, then link again.",
+                );
+              }
               setDone(true);
             } catch (err) {
               setError(message(err));

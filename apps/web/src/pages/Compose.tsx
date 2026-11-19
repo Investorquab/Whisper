@@ -20,8 +20,9 @@ export function ComposePage() {
   })();
   const [to, setTo] = useState(initial);
   const state = useRecipient(to);
-  const source = search.get("from");
-  const draft = search.get("draft") ?? "";
+  // Both come from the linking site's URL, so they are untrusted: trimmed, shown as plain text, labelled as the site's claim.
+  const source = search.get("from")?.replace(/\s+/g, " ").trim().slice(0, 60);
+  const draft = (search.get("draft") ?? "").slice(0, 500);
   const invite = `${window.location.origin}/app`;
 
   return (
@@ -30,7 +31,7 @@ export function ComposePage() {
         <ArrowLeft aria-hidden="true" /> Inbox
       </Link>
       <h1 className="compose__title">New message</h1>
-      {source && <p className="muted">You came here from {source}. Check the recipient below before you send.</p>}
+      {source && <p className="muted">You came here from a site that calls itself “{source}”. Check the recipient below before you send.</p>}
       <div className="card stack">
         <div className="field">
           <label htmlFor={`${ids}-to`} className="field__label">

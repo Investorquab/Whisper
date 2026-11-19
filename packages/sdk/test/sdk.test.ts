@@ -196,6 +196,26 @@ describe("signed messages", () => {
   });
 });
 
+describe("proof bundles under attack", () => {
+  it("rejects a proof re-attributed to another account, replayed on another chain, or with a swapped signature", async () => {
+    const alice = await signer(TEST_MNEMONIC);
+    const mallory = await signer(OTHER_MNEMONIC);
+    const to = "0x9d915196cB6c562E95F83240d5f1F6E4D38661A5";
+    const statement = signedStatement({ chainId: CHAIN, from: alice.address, to, ts: 1_763_500_000_000, body: "Deal: 40 QOR for the print." });
+    const bundle = { v: 1 as const, chainId: CHAIN, from: alice.address, statement, signature: alice.sign(statement) };
+    expect(verifyProofBundle(bundle, alice.pqPublicKey).body).toBe("Deal: 40 QOR for the print.");
+    // Claim Mallory signed it (checked against Mallory's registered key): the statement names Alice.
+    expect(() => verifyProofBundle({ ...bundle, from: mallory.address }, mallory.pqPublicKey)).toThrow();
+    // Mallory signs Alice's statement with her own keys and presents it as Alice's.
+    expect(() => verifyProofBundle({ ...bundle, signature: mallory.sign(statement) }, alice.pqPublicKey)).toThrow();
+    // Same statement replayed for a different chain id.
+    expect(() => verifyProofBundle({ ...bundle, chainId: "qorechain-vladi" }, alice.pqPublicKey)).toThrow();
+    // ML-DSA part stripped or zeroed: the classical half alone is not enough.
+    const sig = bundle.signature;
+    expect(() => verifyProofBundle({ ...bundle, signature: { ...sig, pq: { algorithmId: sig.pq?.algorithmId ?? 1, signature: base64.encode(new Uint8Array(4627)) } } }, alice.pqPublicKey)).toThrow();
+  });
+});
+
 describe("compatibility with the real QoreX wallet", () => {
   it("verifies a signature produced by QoreX 0.4.3 signArbitrary on testnet", () => {
     const fx = JSON.parse(readFileSync(new URL("./fixtures/qorex-signature.json", import.meta.url), "utf8"));
