@@ -90,9 +90,9 @@ const toneIcon: Record<Tone, ReactNode> = {
   danger: <XCircle aria-hidden="true" />,
 };
 
-export function Notice({ tone = "info", title, children, action }: { tone?: Tone; title?: string; children?: ReactNode; action?: ReactNode }) {
+export function Notice({ tone = "info", title, children, action, toast }: { tone?: Tone; title?: string; children?: ReactNode; action?: ReactNode; toast?: boolean }) {
   return (
-    <div className={`notice notice--${tone}`} role={tone === "danger" ? "alert" : "status"}>
+    <div className={`notice notice--${tone} ${toast ? "notice--toast" : ""}`} role={tone === "danger" ? "alert" : "status"}>
       <span className="notice__icon">{toneIcon[tone]}</span>
       <div className="notice__body">
         {title && <p className="notice__title">{title}</p>}

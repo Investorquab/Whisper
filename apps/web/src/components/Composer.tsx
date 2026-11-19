@@ -1,6 +1,6 @@
 import { MAX_BODY_LENGTH, explainError, signedStatement, type Recipient, type WhisperPayload } from "@whisper/sdk";
 import { ExternalLink, FileSignature, Paperclip, Send, X } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { formatEther, parseEther } from "viem";
 import { signStatement, WalletError } from "../lib/qorex";
 import { useSession } from "../state/session";
@@ -45,6 +45,12 @@ export function Composer({
   const [phase, setPhase] = useState<"idle" | "signing" | "sending" | "confirming">("idle");
   const [error, setError] = useState<string>();
   const [sent, setSent] = useState<{ hash: string; request: boolean }>();
+
+  useEffect(() => {
+    if (!sent || !compact) return;
+    const t = setTimeout(() => setSent(undefined), 4500);
+    return () => clearTimeout(t);
+  }, [sent, compact]);
 
   const canSend = Boolean(recipient && recipient.status === "ready" && !recipient.blocked && s.keys && s.account);
   const requestOnly = Boolean(recipient?.requestOnly);
@@ -165,7 +171,7 @@ export function Composer({
       )}
       {error && <Notice tone="danger" title="Not sent">{error}</Notice>}
       {sent && (
-        <Notice tone="success" title={sent.request ? "Contact request sent" : "Sent"} action={<a href={s.client.txUrl(sent.hash)} target="_blank" rel="noreferrer">View on the explorer <ExternalLink className="inline-icon" aria-hidden="true" /></a>}>
+        <Notice key={sent.hash} toast={compact} tone="success" title={sent.request ? "Contact request sent" : "Sent"} action={<a href={s.client.txUrl(sent.hash)} target="_blank" rel="noreferrer">View on the explorer <ExternalLink className="inline-icon" aria-hidden="true" /></a>}>
           Sealed with ML-KEM-1024 and stored on QoreChain.
         </Notice>
       )}

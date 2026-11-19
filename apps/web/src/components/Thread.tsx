@@ -24,6 +24,7 @@ export function Thread({ peer }: { peer: string }) {
   const [replyTo, setReplyTo] = useState<string>();
   const [action, setAction] = useState<{ busy?: string; error?: string; note?: string }>({});
   const endRef = useRef<HTMLDivElement>(null);
+  const isSelf = s.account?.evmAddress.toLowerCase() === peer.toLowerCase();
   const highlight = location.hash.startsWith("#m-") ? location.hash.slice(3) : undefined;
   const [contact, setContact] = useState<{ requestMode: boolean; allowed: boolean; blocked: boolean }>();
   const me = s.account?.evmAddress;
@@ -36,6 +37,12 @@ export function Thread({ peer }: { peer: string }) {
     };
   }, [me, peer, s.client, conv?.lastId]);
   const byId = useMemo(() => new Map(conv?.messages.map((x) => [x.id, x]) ?? []), [conv]);
+
+  useEffect(() => {
+    if (!action.note) return;
+    const t = setTimeout(() => setAction((a) => (a.note ? { ...a, note: undefined } : a)), 4500);
+    return () => clearTimeout(t);
+  }, [action.note]);
 
   useEffect(() => {
     if (conv) m.markRead(conv.peer);
@@ -67,7 +74,6 @@ export function Thread({ peer }: { peer: string }) {
     );
   }
 
-  const isSelf = s.account?.evmAddress.toLowerCase() === peer.toLowerCase();
   const lastInbound = conv ? [...conv.messages].reverse().find((x) => !x.mine) : undefined;
   const replyMessage = replyTo ? byId.get(replyTo) : undefined;
 
@@ -79,7 +85,7 @@ export function Thread({ peer }: { peer: string }) {
         </Link>
         <Avatar address={peer} handle={handle} size={44} />
         <div className="thread__who">
-          <h2 className="thread__name">{peerName(peer, s.account?.evmAddress, handle)}</h2>
+          {handle || isSelf ? <h2 className="thread__name">{peerName(peer, s.account?.evmAddress, handle)}</h2> : <h2 className="sr-only">Conversation</h2>}
           <Address value={toQorAddress(peer)} label="Address" />
         </div>
         <ul className="thread__facts" aria-label="What QoreChain proves about this account">
@@ -120,7 +126,11 @@ export function Thread({ peer }: { peer: string }) {
       </div>
 
       {action.error && <Notice tone="danger" title="That did not go through">{action.error}</Notice>}
-      {action.note && !action.busy && <Notice tone="success">{action.note}</Notice>}
+      {action.note && !action.busy && (
+        <Notice key={action.note} tone="success" toast>
+          {action.note}
+        </Notice>
+      )}
       {action.busy === "react" && <Notice tone="info">Approve the reaction in QoreX…</Notice>}
 
       {contact?.blocked && !isSelf && (
