@@ -7,7 +7,8 @@
     "test": "forge test",
     "lint": "forge fmt --check",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "deploy:testnet": "tsx --env-file=.env script/deploy.ts"
+    "deploy:testnet": "tsx --env-file=.env script/deploy.ts",
+    "abi": "forge build && node script/export-abi.mjs"
   },
   "dependencies": {
     "@cosmjs/stargate": "^0.39.0",
