@@ -1,5 +1,6 @@
 import { verifySignedMessage } from "@whisper/sdk";
-import { AlertCircle, CornerUpLeft, FileSignature, Link2, SmilePlus } from "lucide-react";
+import { AlertCircle, CornerUpLeft, FileSignature, Link2, Share2, SmilePlus } from "lucide-react";
+import { proofUrl } from "../lib/proof";
 import { useEffect, useState } from "react";
 import { formatEther } from "viem";
 import type { ThreadMessage } from "../lib/conversations";
@@ -119,6 +120,28 @@ export function MessageBubble({
           >
             <Link2 aria-hidden="true" />
           </button>
+          {signature === "valid" && p.signed && (
+            <button
+              type="button"
+              className="msg__action"
+              aria-label="Copy a proof link for this signed message"
+              title="Anyone with this link can read this one message and check who signed it"
+              onClick={async () => {
+                const ok = window.confirm("Anyone with the proof link can read this message and verify who signed it. Copy the link?");
+                if (!ok) return;
+                const url = proofUrl({ v: 1, chainId: s.client.network.chainId, from: message.item.from, statement: p.signed!.statement, signature: p.signed!.signature, txHash: message.item.txHash });
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                } catch {
+                  window.prompt("Copy this proof link", url);
+                }
+              }}
+            >
+              <Share2 aria-hidden="true" />
+            </button>
+          )}
           <a className="msg__action msg__action--link" href={s.client.txUrl(message.item.txHash)} target="_blank" rel="noreferrer">
             On chain
           </a>

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
+import { CheckPage } from "./pages/Check";
 import { ComposePage } from "./pages/Compose";
 import { InboxPage, MessageLinkPage } from "./pages/Inbox";
 import { SettingsPage } from "./pages/Settings";
@@ -27,6 +28,7 @@ export function App() {
         <Route path="/app/new" element={<RequireInbox><ComposePage /></RequireInbox>} />
         <Route path="/to/:address" element={<RequireInbox><ComposePage /></RequireInbox>} />
         <Route path="/setup" element={<SetupPage />} />
+        <Route path="/check" element={<CheckPage />} />
         <Route path="*" element={<Navigate to="/app" replace />} />
       </Routes>
     </AppShell>

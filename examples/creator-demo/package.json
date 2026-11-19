@@ -1,0 +1,12 @@
+{
+  "name": "@whisper/example-creator-demo",
+  "private": true,
+  "description": "A demo dApp page that adds Whisper's 'Message the creator' button with one script tag.",
+  "scripts": {
+    "dev": "python3 -m http.server 4180",
+    "build": "node -e \"process.exit(0)\"",
+    "typecheck": "node -e \"process.exit(0)\"",
+    "lint": "node -e \"process.exit(0)\"",
+    "test": "node -e \"process.exit(0)\""
+  }
+}

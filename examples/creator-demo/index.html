@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Night Market (demo): prints from QoreChain artists</title>
+    <meta name="description" content="A demo dApp showing how any QoreChain site adds Whisper's post-quantum 'Message the creator' button." />
+    <style>
+      :root { color-scheme: light; --ink: #16130f; --muted: #6b6258; --paper: #f4efe7; --card: #fffdf8; --line: #e3dbcf; --accent: #b4532a; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 16px/1.55 Georgia, "Iowan Old Style", serif; background: var(--paper); color: var(--ink); }
+      header, main, footer { max-width: 1040px; margin: 0 auto; padding: 24px 20px; }
+      header { display: flex; justify-content: space-between; align-items: baseline; }
+      .brand { font-size: 22px; letter-spacing: -0.01em; }
+      .brand em { color: var(--accent); font-style: normal; }
+      .tag { font: 500 12px/1 system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+      main { display: grid; gap: 40px; align-items: center; }
+      @media (min-width: 860px) { main { grid-template-columns: 1.1fr 1fr; } }
+      .art { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 18px; box-shadow: 0 30px 60px -30px rgb(22 19 15 / .35); }
+      .art svg { width: 100%; height: auto; display: block; }
+      h1 { font-size: clamp(32px, 4vw, 48px); line-height: 1.05; margin: 8px 0 12px; font-weight: 400; }
+      .by { font: 15px/1.4 system-ui, sans-serif; color: var(--muted); }
+      .by code { font-size: 13px; background: #ece5da; padding: 2px 6px; border-radius: 4px; }
+      .price { font-size: 26px; margin: 20px 0; }
+      .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+      .buy { min-height: 44px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--accent); color: #fff; font: 500 15px system-ui, sans-serif; opacity: .55; cursor: not-allowed; }
+      .note { margin-top: 18px; font: 14px/1.5 system-ui, sans-serif; color: var(--muted); max-width: 46ch; }
+      footer { font: 13px/1.5 system-ui, sans-serif; color: var(--muted); border-top: 1px solid var(--line); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="brand">Night <em>Market</em></span>
+      <span class="tag">Demo dApp</span>
+    </header>
+    <main>
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+          <rect width="400" height="300" fill="#0f1420" />
+          <g stroke="#5ab9fc" stroke-opacity=".55" fill="none">
+            <path d="M0 220 L80 150 L160 190 L240 90 L320 140 L400 60" stroke-width="2" />
+            <path d="M0 250 L80 190 L160 220 L240 130 L320 170 L400 100" stroke-width="1" stroke-opacity=".35" />
+          </g>
+          <g fill="#e9edf3">
+            <circle cx="80" cy="150" r="4" /><circle cx="160" cy="190" r="4" /><circle cx="240" cy="90" r="5" />
+            <circle cx="320" cy="140" r="4" /><circle cx="60" cy="60" r="1.5" /><circle cx="300" cy="40" r="1.5" /><circle cx="360" cy="230" r="1.5" />
+          </g>
+          <circle cx="330" cy="62" r="22" fill="#f2b84b" fill-opacity=".9" />
+        </svg>
+      </div>
+      <section>
+        <span class="tag">Signed print · edition of 25</span>
+        <h1>Lattice at Night, No.&nbsp;7</h1>
+        <p class="by">by Carol · <code>qor1avnejacyrgz…y67tzp</code></p>
+        <p class="price">12 QOR</p>
+        <div class="actions">
+          <button class="buy" disabled>Buy print</button>
+          <!-- Whisper: one element and one script tag. -->
+          <span
+            data-whisper-to="0xeB279977041A05a7F909Bd0942411F682bB581d8"
+            data-whisper-label="Message the artist"
+            data-whisper-source="Night Market"
+            data-whisper-draft="Hi Carol, I'm interested in Lattice at Night, No. 7."
+          ></span>
+        </div>
+        <p class="note">Questions about sizing or shipping go straight to the artist, sealed with ML-KEM-1024 and stored on QoreChain. Night Market never sees them.</p>
+      </section>
+    </main>
+    <footer>Night Market is a fictional shop that demonstrates Whisper's "Message the creator" button. Nothing here is for sale.</footer>
+    <!--
+      In your own page this is one line:
+        <script src="https://YOUR-WHISPER-APP/whisper-button.js" defer></script>
+      The demo picks the Whisper app at runtime so the same file works locally and when deployed:
+      ?whisper=https://… wins, a copy served by Whisper itself (/demo/) uses that origin,
+      and the standalone dev server (port 4180) uses the local preview on port 4173.
+    -->
+    <script>
+      (function () {
+        var param = new URLSearchParams(location.search).get("whisper");
+        var app = param || (location.port === "4180" ? "http://localhost:4173" : location.origin);
+        var s = document.createElement("script");
+        s.src = new URL("/whisper-button.js", app).toString();
+        document.body.appendChild(s);
+      })();
+    </script>
+  </body>
+</html>

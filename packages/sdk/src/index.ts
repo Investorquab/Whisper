@@ -61,3 +61,4 @@ export {
   verifyHandleRecord,
   type HandleRecord,
 } from "./handles.js";
+export { autoMountMessageButtons, mountMessageButton, type MessageButtonOptions } from "./button.js";

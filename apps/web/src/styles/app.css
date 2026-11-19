@@ -816,3 +816,26 @@
     max-width: 88%;
   }
 }
+
+/* ---------------------------------------------------------------- check */
+.check {
+  max-width: 720px;
+  margin: 0 auto;
+  display: grid;
+  gap: var(--space-4);
+}
+.check__title {
+  font-size: var(--text-3xl);
+}
+.check__result--valid {
+  border-color: color-mix(in srgb, var(--verified) 40%, transparent);
+}
+.check__quote {
+  margin: 0;
+  padding: var(--space-4);
+  border-left: 3px solid var(--verified);
+  background: var(--raised);
+  border-radius: var(--radius-sm);
+  white-space: pre-wrap;
+  font-size: var(--text-lg);
+}
