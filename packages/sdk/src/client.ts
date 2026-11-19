@@ -21,6 +21,23 @@ import { openMessage, sealMessage, type WhisperPayload } from "./message.js";
 import { QORECHAIN_TESTNET, type WhisperNetwork } from "./networks.js";
 import { fetchChainKemKey, fetchPqcPublicKey } from "./rest.js";
 
+/** QoreChain precompile returning an account's registered post-quantum key (testnet; see EVM_PRECOMPILES.md). */
+export const PQC_KEY_STATUS_PRECOMPILE: Address = "0x0000000000000000000000000000000000000a02";
+const pqcKeyStatusAbi = [
+  {
+    type: "function",
+    name: "pqcKeyStatus",
+    stateMutability: "view",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [
+      { name: "registered", type: "bool" },
+      { name: "algorithmId", type: "uint8" },
+      { name: "pubkey", type: "bytes" },
+      { name: "possessionProven", type: "bool" },
+    ],
+  },
+] as const;
+
 /** Minimal EIP-1193 provider: QoreX (`window.qorex.evm`), or any EVM wallet. */
 export interface Eip1193Provider {
   request(args: { method: string; params?: readonly unknown[] | object }): Promise<unknown>;
@@ -130,16 +147,40 @@ export class WhisperClient {
 
   // ---------------------------------------------------------------- reading
 
-  /** The account's registered ML-DSA-87 key (cached), or undefined. */
+  /**
+   * The account's registered ML-DSA-87 key (cached), or undefined. Read on chain through the
+   * `pqcKeyStatus` precompile (works from browsers); falls back to QoreChain's REST API, which
+   * browsers cannot call (no CORS) but servers can.
+   */
   pqcPublicKey(account: string): Promise<Uint8Array | undefined> {
     const key = toEvmAddress(account);
     let hit = this.pqcKeyCache.get(key);
     if (!hit) {
-      hit = fetchPqcPublicKey(this.network.rest, key, this.fetchImpl);
+      hit = this.readPqcKey(key);
       hit.catch(() => this.pqcKeyCache.delete(key));
       this.pqcKeyCache.set(key, hit);
     }
     return hit;
+  }
+
+  /** Full key status from the precompile, including whether the account proved possession of the key. */
+  async pqcKeyStatus(account: string): Promise<{ registered: boolean; algorithmId: number; publicKey?: Uint8Array; possessionProven: boolean }> {
+    const [registered, algorithmId, pubkey, possessionProven] = await this.publicClient.readContract({
+      address: PQC_KEY_STATUS_PRECOMPILE,
+      abi: pqcKeyStatusAbi,
+      functionName: "pqcKeyStatus",
+      args: [toEvmAddress(account)],
+    });
+    return { registered, algorithmId, publicKey: registered && pubkey.length > 2 ? hexToBytes(pubkey) : undefined, possessionProven };
+  }
+
+  private async readPqcKey(account: Address): Promise<Uint8Array | undefined> {
+    try {
+      const status = await this.pqcKeyStatus(account);
+      return status.registered ? status.publicKey : undefined;
+    } catch {
+      return fetchPqcPublicKey(this.network.rest, account, this.fetchImpl);
+    }
   }
 
   private async indexBlocks(fn: "inboxBlocks" | "outboxBlocks" | "keyBlocks" | "linkBlocks", account: Address, total: bigint, fromIndex = 0n) {
@@ -211,7 +252,8 @@ export class WhisperClient {
         }
       }
     }
-    const chainKey = await fetchChainKemKey(this.network.rest, address, this.fetchImpl);
+    // QoreChain's own KEM registry is only reachable from servers (its REST API sends no CORS headers).
+    const chainKey = await fetchChainKemKey(this.network.rest, address, this.fetchImpl).catch(() => undefined);
     if (chainKey) return { source: "chain-registry", mlkemPublicKey: chainKey, cardVerified: true };
     return undefined;
   }

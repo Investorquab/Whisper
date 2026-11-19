@@ -1,6 +1,7 @@
 export { whisperMailboxAbi } from "./abi.js";
 export { QOR_PREFIX, isWhisperAddress, sameAddress, shortAddress, toEvmAddress, toQorAddress } from "./address.js";
 export {
+  PQC_KEY_STATUS_PRECOMPILE,
   WhisperClient,
   blockSpans,
   explainError,
