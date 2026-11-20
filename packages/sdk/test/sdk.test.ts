@@ -11,6 +11,7 @@ import {
   encodeCard,
   encodePayload,
   explainError,
+  fetchChainKemKey,
   generateInboxKeys,
   inboxKeysFromSeed,
   isWhisperError,
@@ -130,6 +131,34 @@ describe("sealed messages", () => {
     const keys = generateInboxKeys();
     expect(inboxKeysFromSeed(keys.seed).mlkemPublicKey).toEqual(keys.mlkemPublicKey);
     expect(() => inboxKeysFromSeed(new Uint8Array(31))).toThrow();
+  });
+});
+
+describe("QoreChain's native KEM registry (registered recipient keys)", () => {
+  const dana = "qor18uusdy4ljlr9gfyad2nalete745s73lgxuelp8";
+  const reply = (status: number, body?: unknown) => async () => new Response(body === undefined ? "" : JSON.stringify(body), { status });
+  const keys = generateInboxKeys();
+  const record = (algorithm_id: number, key: Uint8Array) => ({ found: true, key: { address: dana, algorithm_id, algorithm_name: "mlkem1024", public_key: base64.encode(key) } });
+
+  it("reads an ML-KEM-1024 key from /qorechain/pqc/v1/kem/{address} and seals to it", async () => {
+    let asked = "";
+    const got = await fetchChainKemKey("https://api-testnet.qore.host", dana, async (url) => {
+      asked = url;
+      return reply(200, record(2, keys.mlkemPublicKey))();
+    });
+    expect(asked).toBe(`https://api-testnet.qore.host/qorechain/pqc/v1/kem/${dana}`);
+    expect(got).toEqual(keys.mlkemPublicKey);
+    const payload: WhisperPayload = { v: 1, type: "text", body: "to a key from the chain registry", ts: 1 };
+    const from = "0x38A370ecD9A2E43686cF2ea48950216eb6E1929d";
+    const envelope = sealMessage({ chainId: CHAIN, from, to: dana, payload, recipientKey: got! });
+    expect(openMessage({ chainId: CHAIN, from, to: dana, envelope, keys })).toEqual(payload);
+  });
+
+  it("ignores other algorithms, wrong sizes and accounts without a key", async () => {
+    expect(await fetchChainKemKey("https://x.test", dana, reply(200, record(3, keys.mlkemPublicKey)))).toBeUndefined();
+    expect(await fetchChainKemKey("https://x.test", dana, reply(200, record(2, keys.mlkemPublicKey.slice(0, 800))))).toBeUndefined();
+    expect(await fetchChainKemKey("https://x.test", dana, reply(200, { found: false }))).toBeUndefined();
+    expect(await fetchChainKemKey("https://x.test", dana, reply(404))).toBeUndefined();
   });
 });
 

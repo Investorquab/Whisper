@@ -252,7 +252,8 @@ export class WhisperClient {
         }
       }
     }
-    // QoreChain's own KEM registry is only reachable from servers (its REST API sends no CORS headers).
+    // Fallback: QoreChain's own KEM registry (x/pqc MsgRegisterKEMKey, registered with a hybrid ML-DSA-87
+    // signature). Its REST API sends no CORS headers, so the web app reads it through its same-origin proxy.
     const chainKey = await fetchChainKemKey(this.network.rest, address, this.fetchImpl).catch(() => undefined);
     if (chainKey) return { source: "chain-registry", mlkemPublicKey: chainKey, cardVerified: true };
     return undefined;
