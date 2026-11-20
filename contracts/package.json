@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "deploy:testnet": "tsx --env-file=.env script/deploy.ts",
     "abi": "forge build && node script/export-abi.mjs",
-    "attack:classical": "tsx script/attack-classical-key.ts"
+    "attack:classical": "tsx script/attack-classical-key.ts",
+    "live:native-kem": "tsx script/live-native-kem.ts"
   },
   "dependencies": {
     "@cosmjs/stargate": "^0.39.0",
