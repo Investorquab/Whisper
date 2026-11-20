@@ -15,7 +15,7 @@ Built for the QoreChain *Build Before Q-Day* Developer Fest, Encrypted Apps trac
 | Signatures | Hybrid secp256k1 + ML-DSA-87 through QoreX and QoreSign, checked against QoreChain's PQC key registry |
 | Wallet | QoreX browser extension (an Ethereum account, coin 60) |
 | Fee | 0.001 QOR a message, plus gas |
-| Tests | 31 Foundry, 29 SDK, 17 web app; 8 of 8 live classical-key attacks blocked ([audit.md](audit.md)) |
+| Tests | 31 Foundry, 32 SDK, 17 web app; 8 of 8 live classical-key attacks blocked ([audit.md](audit.md)) |
 
 ---
 
@@ -24,15 +24,16 @@ Built for the QoreChain *Build Before Q-Day* Developer Fest, Encrypted Apps trac
 1. [Why this exists](#why-this-exists)
 2. [What it does](#what-it-does)
 3. [How it works](#how-it-works)
-4. [Architecture](#architecture)
-5. [Security](#security)
-6. [Message the creator: integrate Whisper in your dApp](#message-the-creator-integrate-whisper-in-your-dapp)
-7. [Run it locally](#run-it-locally)
-8. [Deploy](#deploy)
-9. [Testnet addresses](#testnet-addresses)
-10. [Repository layout](#repository-layout)
-11. [Limitations](#limitations)
-12. [Credits and licence](#credits-and-licence)
+4. [Encrypted Apps requirements](#encrypted-apps-requirements)
+5. [Architecture](#architecture)
+6. [Security](#security)
+7. [Message the creator: integrate Whisper in your dApp](#message-the-creator-integrate-whisper-in-your-dapp)
+8. [Run it locally](#run-it-locally)
+9. [Deploy](#deploy)
+10. [Testnet addresses](#testnet-addresses)
+11. [Repository layout](#repository-layout)
+12. [Limitations](#limitations)
+13. [Credits and licence](#credits-and-licence)
 
 ---
 
@@ -94,6 +95,36 @@ sequenceDiagram
 2. **Send.** The composer resolves the recipient (address, `qor1…`, `0x…` or `@handle`), checks their card against their ML-DSA-87 key in QoreChain's registry, seals the message to the recipient and to you, and sends it through QoreX.
 3. **Read.** The contract keeps a per-address index of the blocks that hold your messages, so the app reads only those blocks (QoreChain's RPC caps log queries at 10,000 blocks).
 4. **Verify.** A signed message carries its statement and hybrid signature inside the sealed payload. Readers check it against the sender's registered ML-DSA-87 key, never against a key the message brings along.
+
+## Encrypted Apps requirements
+
+How Whisper meets each requirement of the Encrypted Apps track, where it is in the code, and what is on testnet to check it.
+
+| Requirement | How Whisper does it | Code | On testnet |
+| --- | --- | --- | --- |
+| **ML-KEM-1024 encryption** | Every message is sealed with ML-KEM-1024 (QoreSeal `mlkem` mode, 1568-byte keys) to the recipient's key, plus a copy to the sender's own key, with AES-256-GCM for the content, padded to 256-byte blocks. The sender and recipient addresses are bound as associated data. | [`packages/sdk/src/message.ts`](packages/sdk/src/message.ts) (`sealMessage`, `openMessage`) | 27 sealed envelopes in `WhisperMailbox` (`Message` events); the contract rejects anything smaller than one ML-KEM entry |
+| **Registered recipient keys** | Two registries, both on chain. **1)** `WhisperMailbox.publishKey`: an inbox's ML-KEM-1024 key, published with its Whisper card. **2)** QoreChain's **native KEM registry** (`x/pqc` `MsgRegisterKEMKey`, read at `/qorechain/pqc/v1/kem/{address}`): when an address has no Whisper card, the SDK uses its natively registered ML-KEM-1024 key. QoreX keeps `RegisterKEMKey` wallet-only (websites cannot request it), which is why Whisper also publishes its own registry; anyone who registered a key in QoreX can be messaged with no setup. | [`packages/sdk/src/client.ts`](packages/sdk/src/client.ts) (`getKey`, `resolveRecipient`), [`packages/sdk/src/rest.ts`](packages/sdk/src/rest.ts) (`fetchChainKemKey`), [`contracts/src/WhisperMailbox.sol`](contracts/src/WhisperMailbox.sol) (`publishKey`) | 4 accounts with keys in `WhisperMailbox` (for example `KeyPublished` in tx `0x52551514…c57a`, block 10358352). Native registry, live test below: key registered in tx `EF1F0118…F0`, block 10441684; message sealed to it in tx `0x559e44db…7d30`, block 10441694 |
+| **ML-DSA key binding** | A Whisper card is a readable statement ("I use this encryption key…", naming the account, chain and the key's SHA-256 fingerprint) that the owner signs in QoreX with a hybrid secp256k1 + ML-DSA-87 signature. Every reader verifies it against the account's ML-DSA-87 key in QoreChain's PQC registry (`requirePq`) before sealing; a card for another key, account or chain is rejected. Keys in the native registry are bound by the chain itself: `MsgRegisterKEMKey` only lands with the account's hybrid ML-DSA-87 signature. | [`packages/sdk/src/keys.ts`](packages/sdk/src/keys.ts) (`cardStatement`, `verifyCard`) | Every `KeyPublished` carries its card; the attack test's forged card was rejected ([audit.md](audit.md)) |
+| **Client-side encryption and decryption** | Inbox keys are generated in the browser; their seed is encrypted with your password (AES-GCM, PBKDF2 600,000 rounds) in IndexedDB. Sealing and opening run in the browser; there is no Whisper server, and the chain only ever holds ciphertext. | [`apps/web/src/lib/vault.ts`](apps/web/src/lib/vault.ts), [`apps/web/src/components/Composer.tsx`](apps/web/src/components/Composer.tsx), the SDK above | Envelopes on chain are opaque bytes (see any `Message` event on the explorer) |
+
+### Live test: a message to a key from QoreChain's native registry
+
+[`contracts/script/live-native-kem.ts`](contracts/script/live-native-kem.ts) runs the whole path on testnet with test accounts:
+
+```bash
+LIVE_KEYS=/path/outside/the/repo/keys.json pnpm --filter @whisper/contracts live:native-kem
+```
+
+Result of the run on 20 Nov 2026 (all steps passed):
+
+| Step | Result |
+| --- | --- |
+| Recipient `qor18uusdy4ljlr9gfyad2nalete745s73lgxuelp8` registers its ML-DSA-87 key (proof of possession) | tx `0D5A8B59…412F` |
+| It registers an ML-KEM-1024 key in QoreChain's native KEM registry, hybrid-signed | tx `EF1F01180ACC2EC71BC8B925C776AE58AB2B1DF31182AE09D251527E66603EF0`, block 10441684 |
+| `/qorechain/pqc/v1/kem/qor18uusdy4…lp8` serves the 1568-byte key | ✓ |
+| The sender's Whisper SDK resolves the recipient with `source: "chain-registry"` | ✓ |
+| The sender opens an ML-DSA-87-signed EVM window and sends a message sealed to that key | tx `0x559e44db9117c7b868b102ea9ae7e42558df9932d2a88faea34b83eccd1c7d30`, block 10441694 |
+| The recipient reads its mailbox from the chain and opens the message with its ML-KEM-1024 private key | ✓, text matches |
 
 ## Architecture
 
@@ -247,6 +278,7 @@ All on QoreChain testnet `qorechain-diana` (EVM chain 9800). Explorer: [explore.
 | Demo main account linked to that inbox | `qor185xg5c28uvhr9wnmsncynvg86zxyqqgpy8jd3y` |
 | "Carol", second demo user and attack-test victim | `0xeB279977041A05a7F909Bd0942411F682bB581d8` / `qor1avnejacyrgz607gfh5y5ysgldq4mtqwcy67tzp` |
 | Signed message used in the proof demo | block 10359617 |
+| Recipient with a key in QoreChain's native KEM registry (live test) | `qor18uusdy4ljlr9gfyad2nalete745s73lgxuelp8` (KEM key tx `EF1F0118…F0`, block 10441684) |
 
 ## Repository layout
 

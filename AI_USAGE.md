@@ -16,7 +16,7 @@ Whisper was built by one developer working with **Claude Code** (Anthropic's cod
 
 - **Research.** Read QoreChain's docs, the QoreX 0.4.3 extension code and the hackathon's project list; then tested each assumption on the live testnet before building on it (spike results drove the design: EVM windows, the `pqcKeyStatus` precompile, QoreX's account types, iframe limits, CORS).
 - **Contract.** Wrote `WhisperMailbox` and its 31 Foundry tests (fuzzing, reentrancy, fee isolation), and the deploy script.
-- **SDK.** Wrote `@whisper/sdk` (sealing, signatures, handle verification, the message button) and its 29 tests, including fixtures signed by the real QoreX wallet.
+- **SDK.** Wrote `@whisper/sdk` (sealing, signatures, handle verification, the message button) and its 32 tests, including fixtures signed by the real QoreX wallet.
 - **App and landing page.** Wrote the React app and the static landing page. Design choices came from two design skills used as working references: UI/UX Pro Max (style, palette and accessibility rules) and the Taste skill (its layout dealer, copy linter and finish gate, which the landing page was run through at 1440, 1024, 820, 768, 390 and 320 pixels).
 - **Testing with the real wallet.** Drove Chrome with the real QoreX extension through Playwright: setup, sending, signed messages, attached QOR, contact requests, reactions, the creator popup, proof links, main-account linking and backup restore, with a second test user ("Carol") answering from a script.
 - **Breaking it.** Wrote and ran the classical-key attack script and the browser checks in `audit.md`, fixed what failed (five findings), and re-ran each test.

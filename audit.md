@@ -10,7 +10,7 @@ It is not a third-party audit. Known gaps are listed under **Limitations** and *
 | Commit audited | the commit that adds this file |
 | Contract | `WhisperMailbox` at `0xd837298637f4459a3981b540d5543a4423add801` (testnet, block 10350669) |
 | Wallet | QoreX 0.4.3 browser extension, testnet (developer mode) |
-| Automated tests | 31 Foundry (incl. fuzz), 29 SDK, 17 web app, all passing |
+| Automated tests | 31 Foundry (incl. fuzz), 32 SDK, 17 web app, all passing |
 
 ## Summary
 
@@ -18,7 +18,7 @@ It is not a third-party audit. Known gaps are listed under **Limitations** and *
 | --- | --- | --- | --- |
 | Stolen classical key (live chain) | 8 | 8 | No send, transfer, window, key swap or forgery possible |
 | Contract (Foundry) | 31 tests | 31 | Fees, request mode, blocking, sizes, reentrancy, fuzz |
-| Encryption and signatures (SDK) | 29 tests | 29 | Tamper, re-address, replay, wrong signer, stripped ML-DSA |
+| Encryption and signatures (SDK) | 32 tests | 32 | Tamper, re-address, replay, wrong signer, stripped ML-DSA |
 | Hostile content in the browser (live) | 3 | 3 | HTML/script in messages, hostile compose links, proxy scope |
 | Key backup and restore (live) | 4 | 4 | No plaintext in backup; tampered file and wrong password refused |
 | Main-account linking (live) | 3 | 3 after fix | **F-1** found here |
@@ -87,7 +87,7 @@ Residual risk: see **L-2** (an EVM window the real owner leaves open).
 
 The contract never decides who someone is from a signature. It stores keys, links and envelopes, and the client verifies signatures against QoreChain's registry. A bad card or link therefore costs its sender gas and is ignored by every reader.
 
-## 3. Encryption and signatures (SDK, 29 tests)
+## 3. Encryption and signatures (SDK, 32 tests)
 
 `pnpm --filter @whisper/sdk test`. Adversarial cases:
 
