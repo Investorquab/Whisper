@@ -227,6 +227,7 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 | **F-6** | High | Senders could be made to seal messages to a thief's key: a key whose card did not verify was still "ready" | A verifying card is required when the account has an ML-DSA-87 key (`65d7d1c`) | Fixed |
 | **F-7** | Medium | A retired key and its genuine old card could be published again after a rotation, and senders went back to it | A card must be newer than every earlier card for a different key (`2d96e56`) | Fixed |
 | **F-8** | Medium | A former inbox could replay an old link proof and take back a main account's messages | Link statements carry a signed `issued` time; readers follow the newest (`c575567`) | Fixed (re-link once to add the time) |
+| **F-9** | Low | The Check page let a signed body override the "to" and "time" it displayed, and called any mailbox transaction by the signer "Sent on QoreChain" | Header fields read only from the header; an honest block badge (`5529c0d`) | Fixed |
 
 #### F-6 (High): messages sealed to a key whose card does not verify
 
@@ -269,3 +270,15 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 **Verification.** Both F-8 tests failed on `cca7ca4` and pass after: a replayed proof loses to the newer link, and a legacy proof loses to a newer timed link while a legacy-only link still resolves. Re-attacked: the owner deliberately linking back to I1 signs a newer proof and wins, as it should.
 
 **Owner action.** Links made before this change have no `issued` time. Linking once more from Setup gives them the replay protection.
+
+#### F-9 (Low): the Check page showed header fields the body could override
+
+**What was wrong.** The Check page verifies a signed message and shows who it was to and when. It read those fields from **every** line, so `to:` and `time:` lines at the end of the signed body overrode the real header. Separately, its "Sent on QoreChain, block N" badge only checked that the transaction was some mailbox transaction from the signer.
+
+**How it was exploited.** A message to Bob whose body ends with "to: Carol" and "time: 2020-01-01…" was shown as signed to Carol in 2020. Test: `security.test.ts`, "F-9 … reads to/time/chain only from the statement header". The badge issue was confirmed by reading `apps/web/src/pages/Check.tsx`.
+
+**Impact.** A signer could present a genuinely signed message as addressed to someone else or sent at another time, and borrow an unrelated transaction as proof it was sent. Low: the signature is real, and only the displayed context is misleading.
+
+**Fix** (`5529c0d`). Header fields are parsed only from the header (before the first blank line). The badge now says the signer sent a Whisper transaction in block N, and that its contents are sealed and were not compared.
+
+**Verification.** The test failed on `cca7ca4` and passes after; the signature still covers the whole statement. Other statement parsers (cards and link proofs) use the same function, but their statements have no free-text body, so nothing else needed changing.
