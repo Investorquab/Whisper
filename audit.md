@@ -226,6 +226,7 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 | --- | --- | --- | --- | --- |
 | **F-6** | High | Senders could be made to seal messages to a thief's key: a key whose card did not verify was still "ready" | A verifying card is required when the account has an ML-DSA-87 key (`65d7d1c`) | Fixed |
 | **F-7** | Medium | A retired key and its genuine old card could be published again after a rotation, and senders went back to it | A card must be newer than every earlier card for a different key (`2d96e56`) | Fixed |
+| **F-8** | Medium | A former inbox could replay an old link proof and take back a main account's messages | Link statements carry a signed `issued` time; readers follow the newest (`c575567`) | Fixed (re-link once to add the time) |
 
 #### F-6 (High): messages sealed to a key whose card does not verify
 
@@ -254,3 +255,17 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 **Fix** (`2d96e56`). `getKey` reads every key event, and the latest card counts as verified only if its signed `issued` time is later than every earlier verified card for a different key. A rollback resolves to `untrusted-key` (see F-6), and nothing is sealed.
 
 **Verification.** The rollback test failed on `cca7ca4` and passes after. Two guard tests pass before and after: re-publishing the current key and card changes nothing, and a normal rotation to a newer card is accepted. Re-attacked: A → B → A is rejected; a forged newer card fails the F-6 check.
+
+#### F-8 (Medium): a former inbox could replay its old link
+
+**What was wrong.** Anyone may call `link()` on the contract; the proof is only checked for naming the main account, the emitting inbox and the chain. An old proof stayed valid forever, and readers followed the last valid event.
+
+**How it was exploited.** A main account links to inbox I1, then moves to I2. Whoever controls I1 calls `link(account, oldProof)` again with I1's original proof. Before the fix, `getLinkedInbox` returned I1, so senders sealed to I1 again. Test: `security.test.ts`, "F-8 … keeps delivering to the newest linked inbox when an old link proof is re-emitted".
+
+**Impact.** Everyone writing to the main account seals to the old inbox's key until the owner notices and links again, and the attacker could replay again each time.
+
+**Fix** (`c575567`). Link statements now include a signed `issued` time (set by the Setup page), and `getLinkedInbox` follows the valid link with the newest time. Proofs made before this change have no time: they still work when they are the only link, but they rank oldest, so they can't override a newer one.
+
+**Verification.** Both F-8 tests failed on `cca7ca4` and pass after: a replayed proof loses to the newer link, and a legacy proof loses to a newer timed link while a legacy-only link still resolves. Re-attacked: the owner deliberately linking back to I1 signs a newer proof and wins, as it should.
+
+**Owner action.** Links made before this change have no `issued` time. Linking once more from Setup gives them the replay protection.
