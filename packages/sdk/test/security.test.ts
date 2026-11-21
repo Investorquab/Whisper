@@ -176,3 +176,53 @@ describe("F-6: key substitution with a forged card (attacker with the victim's c
     expect(recipient.key?.cardVerified).toBe(true);
   });
 });
+
+describe("F-7: key rollback by replaying the account's own old card", () => {
+  it("does not seal to an older key re-published after a rotation, even though its card is genuine", async () => {
+    const alice = signer(ALICE_MNEMONIC);
+    const chain = new FakeChain();
+    chain.pqc.set(alice.evm.toLowerCase(), alice.pqPublicKey);
+    const oldKeys = generateInboxKeys(); // later leaked: the reason Alice rotated
+    const oldCard = card(alice, alice.evm, oldKeys, "2026-11-19T00:00:00.000Z");
+    chain.publishKey(alice.evm, oldKeys.mlkemPublicKey, oldCard);
+    const newKeys = generateInboxKeys();
+    chain.publishKey(alice.evm, newKeys.mlkemPublicKey, card(alice, alice.evm, newKeys, "2026-11-20T00:00:00.000Z"));
+
+    // The thief copies the old key and its genuine card from the public event history and re-publishes
+    // them from Alice's address through one open EVM window.
+    chain.publishKey(alice.evm, oldKeys.mlkemPublicKey, oldCard);
+
+    const client = new WhisperClient({ publicClient: chain.client(), fetch: noRest });
+    const recipient = await client.resolveRecipient(alice.evm);
+    expect(recipient.status).not.toBe("ready");
+    expect(recipient.key?.cardVerified).toBe(false);
+  });
+
+  it("is not fooled into distrust when the current key and card are simply published again", async () => {
+    const alice = signer(ALICE_MNEMONIC);
+    const chain = new FakeChain();
+    chain.pqc.set(alice.evm.toLowerCase(), alice.pqPublicKey);
+    const a = generateInboxKeys();
+    const b = generateInboxKeys();
+    const bCard = card(alice, alice.evm, b, "2026-11-20T00:00:00.000Z");
+    chain.publishKey(alice.evm, a.mlkemPublicKey, card(alice, alice.evm, a, "2026-11-19T00:00:00.000Z"));
+    chain.publishKey(alice.evm, b.mlkemPublicKey, bCard);
+    chain.publishKey(alice.evm, b.mlkemPublicKey, bCard);
+    const recipient = await new WhisperClient({ publicClient: chain.client(), fetch: noRest }).resolveRecipient(alice.evm);
+    expect(recipient.status).toBe("ready");
+  });
+
+  it("accepts a normal rotation to a newer card", async () => {
+    const alice = signer(ALICE_MNEMONIC);
+    const chain = new FakeChain();
+    chain.pqc.set(alice.evm.toLowerCase(), alice.pqPublicKey);
+    const a = generateInboxKeys();
+    const b = generateInboxKeys();
+    chain.publishKey(alice.evm, a.mlkemPublicKey, card(alice, alice.evm, a, "2026-11-19T00:00:00.000Z"));
+    chain.publishKey(alice.evm, b.mlkemPublicKey, card(alice, alice.evm, b, "2026-11-20T00:00:00.000Z"));
+    const recipient = await new WhisperClient({ publicClient: chain.client(), fetch: noRest }).resolveRecipient(alice.evm);
+    expect(recipient.status).toBe("ready");
+    expect(recipient.key?.version).toBe(2);
+  });
+});
+

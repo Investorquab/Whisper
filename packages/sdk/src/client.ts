@@ -15,7 +15,7 @@ import {
 import { whisperMailboxAbi } from "./abi.js";
 import { sameAddress, toEvmAddress, toQorAddress } from "./address.js";
 import { WhisperError, isWhisperError } from "./errors.js";
-import { decodeCard, encodeCard, verifyCard, type InboxKeys, type WhisperCard } from "./keys.js";
+import { decodeCard, encodeCard, statementFields, verifyCard, type InboxKeys, type WhisperCard } from "./keys.js";
 import { decodeLinkProof, encodeLinkProof, verifyLinkProof, type WhisperLinkProof } from "./link.js";
 import { openMessage, sealMessage, type WhisperPayload } from "./message.js";
 import { QORECHAIN_TESTNET, type WhisperNetwork } from "./networks.js";
@@ -232,7 +232,8 @@ export class WhisperClient {
     const address = toEvmAddress(account);
     const lengths = await this.indexLengths(address);
     if (lengths.keys > 0n) {
-      const blocks = await this.indexBlocks("keyBlocks", address, lengths.keys, lengths.keys - 1n);
+      // Every key event is read (rotations are rare): a re-published old key must not win over a newer card.
+      const blocks = await this.indexBlocks("keyBlocks", address, lengths.keys);
       const logs = await this.logsAt(blocks, KEY_EVENT, { account: address });
       const latest = logs[logs.length - 1];
       if (latest) {
@@ -248,7 +249,7 @@ export class WhisperClient {
             const pq = await this.pqcPublicKey(address);
             if (pq) {
               verifyCard({ card, account: address, chainId: this.network.chainId, mlkemPublicKey, pqPublicKey: pq });
-              cardVerified = true;
+              cardVerified = !this.supersededBy(logs.slice(0, -1), address, card, pq);
             }
           } catch (error) {
             if (!isWhisperError(error)) throw error;
@@ -262,6 +263,29 @@ export class WhisperClient {
     const chainKey = await fetchChainKemKey(this.network.rest, address, this.fetchImpl).catch(() => undefined);
     if (chainKey) return { source: "chain-registry", mlkemPublicKey: chainKey, cardVerified: true };
     return undefined;
+  }
+
+  /**
+   * True when an earlier KeyPublished event carries a verified card issued at or after `latest`'s card. A
+   * genuine old card re-published after a rotation (a rollback to a retired, possibly leaked key) is then
+   * not trusted. Cards always state when they were issued, and the account signed that time.
+   */
+  private supersededBy(earlier: Log[], account: Address, latest: WhisperCard, pq: Uint8Array): boolean {
+    const latestIssued = Date.parse(statementFields(latest.statement).issued ?? "");
+    for (const log of earlier) {
+      try {
+        const ev = decodeEventLog({ abi: whisperMailboxAbi, data: log.data, topics: log.topics });
+        if (ev.eventName !== "KeyPublished") continue;
+        const card = decodeCard(hexToBytes(ev.args.card));
+        if (statementFields(card.statement).key === statementFields(latest.statement).key) continue; // same key again: harmless
+        verifyCard({ card, account, chainId: this.network.chainId, mlkemPublicKey: hexToBytes(ev.args.mlkemPublicKey), pqPublicKey: pq });
+        const issued = Date.parse(statementFields(card.statement).issued ?? "");
+        if (!(latestIssued > issued)) return true;
+      } catch (error) {
+        if (!isWhisperError(error)) throw error;
+      }
+    }
+    return false;
   }
 
   /** The inbox `account` linked with a valid signed proof (latest wins), or undefined. */
