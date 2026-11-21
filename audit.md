@@ -54,7 +54,7 @@ ATTACK_PRIVATE_KEY=0x… ATTACK_THIEF=0x… pnpm --filter @whisper/contracts att
 | 5 | Open an EVM window, hybrid-signed with the attacker's own ML-DSA key | Rejected | code 21 (pqc): "hybrid PQC signature verification failed" | Blocked |
 | 6 | Register the attacker's ML-DSA key over the victim's | Rejected | code 234 (pqc): "register and migrate need its hybrid signature" | Blocked |
 | 7 | Forge a signed Whisper message ("I confirm I owe you nothing.") | Rejected by Whisper | "Signature does not verify against the signer's ML-DSA-87 key" | Blocked |
-| 8 | Forge a Whisper card to swap in the attacker's inbox key | Rejected by Whisper | "Card signature does not verify against the account's ML-DSA-87 key" | Blocked |
+| 8 | Forge a Whisper card to swap in the attacker's inbox key | Rejected by Whisper (since F-6 in the second pass; before that it was flagged, not refused) | "Card signature does not verify against the account's ML-DSA-87 key" | Blocked |
 
 After the run, Carol's registered ML-DSA-87 key was unchanged. **8 of 8 attacks were blocked.**
 
@@ -282,3 +282,20 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 **Fix** (`5529c0d`). Header fields are parsed only from the header (before the first blank line). The badge now says the signer sent a Whisper transaction in block N, and that its contents are sealed and were not compared.
 
 **Verification.** The test failed on `cca7ca4` and passes after; the signature still covers the whole statement. Other statement parsers (cards and link proofs) use the same function, but their statements have no free-text body, so nothing else needed changing.
+
+### Leads (not confirmed, not counted as findings)
+- **Index flooding.** Anyone can add entries to another account's inbox index (a contact request costs 0.001 QOR plus gas) and link index (gas only). Readers walk every page, so a determined spammer could slow an inbox down. To confirm: a local script that times reads after N spam entries.
+- **`possessionProven` is not used.** Safe today, because every Whisper statement names its signer and is checked against that signer. It would become a bug if a future statement left the signer out.
+- **AES-GCM is not key-committing.** A malicious sender might craft one envelope that opens to different text for the recipient and for the sender's own copy. That would affect only the sender's own view; not demonstrated.
+- **Backup restore accepts any PBKDF2 iteration count of 100,000 or more,** so a hostile backup file could freeze the tab.
+
+Also found and fixed: `pnpm check` failed on a fresh clone because the type check ran before the SDK was built (`d0dca1d`).
+
+### Not tested in this pass
+The live site and its headers, the real QoreX extension, QoreChain's EVM window rules (trusted; see L-2), the handle registry service and the phone layout.
+
+### Re-running
+```bash
+pnpm check                                                         # lint, types (builds the SDK first), every test, build
+pnpm --filter @whisper/sdk exec vitest run test/security.test.ts   # the second pass's exploits, now regression tests
+```
