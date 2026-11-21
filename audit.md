@@ -224,3 +224,21 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 
 | ID | Severity | What was wrong | Fix | Status |
 | --- | --- | --- | --- | --- |
+| **F-6** | High | Senders could be made to seal messages to a thief's key: a key whose card did not verify was still "ready" | A verifying card is required when the account has an ML-DSA-87 key (`65d7d1c`) | Fixed |
+
+#### F-6 (High): messages sealed to a key whose card does not verify
+
+**What was wrong.** Every Whisper inbox key comes with a *card*: a statement signed with the account's ML-DSA-87 key that says "this is my inbox key". `getKey` correctly worked out when a card did **not** verify, but `resolveRecipient` (`packages/sdk/src/client.ts`) ignored that and still returned "ready". The composer enabled Send and `send()` sealed the message to that key. The web app only showed a small "Key not verified" badge. Verification was advice, not a rule.
+
+**How it was exploited.**
+1. Alice publishes her inbox key with a valid card.
+2. A thief who holds Alice's classical key, and lands one transaction through a leftover EVM window (the risk documented as L-2), publishes **his own** ML-KEM key from Alice's address, with a card he signed himself.
+3. Bob resolves Alice and sends "the launch code is 4471".
+4. The thief's keys open the envelope. Test: `security.test.ts`, "F-6 … refuses to seal to a key whose card does not verify".
+
+**Impact.** Every later message to Alice is readable by the thief, while Alice's own app simply fails to decrypt. It breaks Whisper's headline promise ("only the recipient can read it"), and section 1, attack 8, which said the swap was "rejected by Whisper": it was flagged, not refused. High rather than Critical because it needs the victim's classical key and an open EVM window.
+
+**Fix** (`65d7d1c`). When the account has an ML-DSA-87 key, its inbox key must carry a card that verifies against it. Otherwise the recipient resolves to the new status `untrusted-key`, `send()` refuses with `INVALID_CARD`, and the app shows a danger notice in place of the send button. Accounts with no ML-DSA-87 key keep the documented "Key not verified" behaviour.
+
+**Verification.** The test failed on `cca7ca4` (the thief could decrypt) and passes after; "still sends to a key with a valid card" passes before and after. Re-attacked: the linked-inbox path applies the same check with the linked inbox's ML-DSA key; an RPC failure while reading the ML-DSA key makes resolution throw (fails closed); replies use the same resolution. Looking for the same pattern elsewhere led to F-7 and F-8.
+
