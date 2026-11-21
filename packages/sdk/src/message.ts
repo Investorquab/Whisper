@@ -185,7 +185,10 @@ export interface MessageProofBundle {
 /** Throws unless a proof bundle's statement was signed by the `from` it names. */
 export function verifyProofBundle(bundle: MessageProofBundle, pqPublicKey: Uint8Array): { from: string; to?: string; time?: string; body: string } {
   if (!bundle.statement.startsWith("Whisper signed message v1\n")) throw new WhisperError("INVALID_SIGNATURE", "Not a Whisper signed message");
-  const f = statementFields(bundle.statement);
+  // Header fields come only from the header (before the first blank line). The body is free text the signer
+  // wrote, and a "to: …" or "time: …" line in it must not change what the Check page says.
+  const header = bundle.statement.split("\n\n")[0] ?? "";
+  const f = statementFields(header);
   if (!f.from || !sameAddress(f.from, bundle.from)) throw new WhisperError("INVALID_SIGNATURE", "Proof names a different sender");
   if (f.chain !== bundle.chainId) throw new WhisperError("INVALID_SIGNATURE", "Proof is for a different chain");
   verifyStatementSignature({ chainId: bundle.chainId, signer: bundle.from, statement: bundle.statement, signature: bundle.signature, pqPublicKey });

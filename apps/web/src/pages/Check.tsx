@@ -63,7 +63,11 @@ export function CheckPage() {
         <section className="card stack check__result check__result--valid" aria-live="polite">
           <div className="row">
             <VerifiedBadge label="Valid ML-DSA-87 signature" />
-            {result.onChain?.matches && <span className="badge badge--neutral">Sent on QoreChain, block {result.onChain.block.toString()}</span>}
+            {result.onChain?.matches && (
+              <span className="badge badge--neutral" title="Messages are sealed, so the transaction's contents cannot be compared with this text. The proof only names it.">
+                Signer sent a Whisper transaction in block {result.onChain.block.toString()} (contents sealed, not compared)
+              </span>
+            )}
           </div>
           <blockquote className="check__quote">{result.body}</blockquote>
           <dl className="facts">

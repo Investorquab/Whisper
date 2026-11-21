@@ -15,6 +15,9 @@ import {
   isWhisperError,
   linkStatement,
   openMessage,
+  signedStatement,
+  toQorAddress,
+  verifyProofBundle,
   toEvmAddress,
   WhisperClient,
   type Eip1193Provider,
@@ -266,5 +269,20 @@ describe("F-8: link replay by a former inbox", () => {
     chain.link(newInbox, main.evm, linkProof(main, newInbox, "2026-11-20T00:00:00.000Z"));
     chain.link(legacyInbox, main.evm, legacyProof); // replayed legacy proof
     expect(await new WhisperClient({ publicClient: chain.client(), fetch: noRest }).getLinkedInbox(main.evm)).toBe(toEvmAddress(newInbox));
+  });
+});
+
+describe("F-9: the Check page shows header fields that the body can override", () => {
+  it("reads to/time/chain only from the statement header, never from lines in the signed body", () => {
+    const alice = signer(ALICE_MNEMONIC);
+    const bob = "0x9d915196cB6c562E95F83240d5f1F6E4D38661A5";
+    const carol = "qor1avnejacyrgz607gfh5y5ysgldq4mtqwcy67tzp";
+    const body = "Payment received in full.\nto: " + carol + "\ntime: 2020-01-01T00:00:00.000Z";
+    const statement = signedStatement({ chainId: CHAIN, from: alice.qor, to: bob, ts: Date.parse("2026-11-20T10:00:00.000Z"), body });
+    const bundle = { v: 1 as const, chainId: CHAIN, from: alice.qor, statement, signature: alice.sign(statement) };
+    const shown = verifyProofBundle(bundle, alice.pqPublicKey);
+    expect(shown.to).toBe(toQorAddress(bob));
+    expect(shown.time).toBe("2026-11-20T10:00:00.000Z");
+    expect(shown.body).toBe(body);
   });
 });
