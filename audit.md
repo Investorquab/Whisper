@@ -225,6 +225,7 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 | ID | Severity | What was wrong | Fix | Status |
 | --- | --- | --- | --- | --- |
 | **F-6** | High | Senders could be made to seal messages to a thief's key: a key whose card did not verify was still "ready" | A verifying card is required when the account has an ML-DSA-87 key (`65d7d1c`) | Fixed |
+| **F-7** | Medium | A retired key and its genuine old card could be published again after a rotation, and senders went back to it | A card must be newer than every earlier card for a different key (`2d96e56`) | Fixed |
 
 #### F-6 (High): messages sealed to a key whose card does not verify
 
@@ -242,3 +243,14 @@ Each finding was first shown by a test that fails on the old code (`cca7ca4`), t
 
 **Verification.** The test failed on `cca7ca4` (the thief could decrypt) and passes after; "still sends to a key with a valid card" passes before and after. Re-attacked: the linked-inbox path applies the same check with the linked inbox's ML-DSA key; an RPC failure while reading the ML-DSA key makes resolution throw (fails closed); replies use the same resolution. Looking for the same pattern elsewhere led to F-7 and F-8.
 
+#### F-7 (Medium): an old key re-published after a rotation
+
+**What was wrong.** Keys and cards stay public in the event history, and cards carried no check that they were the newest. Re-publishing an old key together with its old, genuinely signed card made it the latest key again, and its card verified.
+
+**How it was exploited.** Alice publishes key A (card signed 19 November), then rotates to key B (20 November), perhaps because A leaked. Anyone who can send one transaction from Alice's account re-publishes A with A's original card. Before the fix the recipient resolved to "ready" with A's card verified. Test: `security.test.ts`, "F-7 … does not seal to an older key re-published after a rotation".
+
+**Impact.** Messages go back to a key the user deliberately retired, which is likely the leaked one.
+
+**Fix** (`2d96e56`). `getKey` reads every key event, and the latest card counts as verified only if its signed `issued` time is later than every earlier verified card for a different key. A rollback resolves to `untrusted-key` (see F-6), and nothing is sealed.
+
+**Verification.** The rollback test failed on `cca7ca4` and passes after. Two guard tests pass before and after: re-publishing the current key and card changes nothing, and a normal rotation to a newer card is accepted. Re-attacked: A → B → A is rejected; a forged newer card fails the F-6 check.
