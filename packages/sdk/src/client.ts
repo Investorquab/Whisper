@@ -71,7 +71,12 @@ export interface Recipient {
   address: Address;
   /** The inbox the message is sent to (equals `address` unless the account linked another inbox). */
   inbox: Address;
-  status: "ready" | "no-key";
+  /**
+   * `untrusted-key`: the account has an ML-DSA-87 key on QoreChain but its latest Whisper key is not bound to
+   * it by a card that verifies (for example a key published by someone holding only the classical key).
+   * Nothing is sealed to it.
+   */
+  status: "ready" | "no-key" | "untrusted-key";
   via?: "direct" | "link";
   key?: KeyRecord;
   /** The account has an ML-DSA-87 key registered on QoreChain. */
@@ -306,7 +311,12 @@ export class WhisperClient {
       key = directKey;
       via = "direct";
     }
-    const recipient: Recipient = { address, inbox, status: key ? "ready" : "no-key", via, key, hasPqcKey: hasPqc };
+    // A Whisper key must be bound to its account by a card that verifies against the account's registered
+    // ML-DSA-87 key. When the account has such a key and the card does not verify, the key was not published
+    // by the key's owner (e.g. by someone holding only the classical key): never seal to it.
+    const untrusted = Boolean(key && key.source === "whisper" && !key.cardVerified && (await this.pqcPublicKey(inbox)));
+    const status: Recipient["status"] = !key ? "no-key" : untrusted ? "untrusted-key" : "ready";
+    const recipient: Recipient = { address, inbox, status, via, key, hasPqcKey: hasPqc };
     if (from && key) {
       const sender = toEvmAddress(from);
       const [requestMode, allowed, blocked] = await Promise.all([
@@ -403,6 +413,7 @@ export class WhisperClient {
   /** Seal and send a message. `attach` adds QOR (wei) for the recipient. */
   async send(args: { from: string; recipient: Recipient; payload: WhisperPayload; senderKeys?: InboxKeys; attach?: bigint }): Promise<Hex> {
     const { recipient } = args;
+    if (recipient.status === "untrusted-key") throw new WhisperError("INVALID_CARD", "This inbox key is not signed by its account's ML-DSA-87 key, so nothing was sealed to it");
     if (recipient.status !== "ready" || !recipient.key) throw new WhisperError("NO_KEY", "This address has not set up Whisper yet");
     if (recipient.blocked) throw new WhisperError("SENDER_BLOCKED", "This inbox does not accept messages from you");
     const isRequest = recipient.requestOnly === true || args.payload.type === "request";

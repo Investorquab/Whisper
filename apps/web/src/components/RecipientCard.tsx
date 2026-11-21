@@ -43,6 +43,16 @@ export function RecipientCard({ state, inviteUrl }: { state: RecipientState; inv
     );
   }
 
+  if (recipient.status === "untrusted-key") {
+    return (
+      <Notice tone="danger" title="This inbox key is not signed by its owner">
+        <Address value={toQorAddress(recipient.inbox)} /> has an ML-DSA-87 key on QoreChain, but its latest Whisper key is not bound to
+        it by a valid signature. Someone else may have published it, so Whisper will not seal a message to it. Ask the owner to
+        republish their key from Whisper's settings.
+      </Notice>
+    );
+  }
+
   return (
     <div className="recipient">
       <div className="recipient__head">
