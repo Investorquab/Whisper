@@ -10,8 +10,10 @@ import { whisperMailboxAbi } from "../src/abi.js";
 import {
   cardStatement,
   encodeCard,
+  encodeLinkProof,
   generateInboxKeys,
   isWhisperError,
+  linkStatement,
   openMessage,
   toEvmAddress,
   WhisperClient,
@@ -226,3 +228,43 @@ describe("F-7: key rollback by replaying the account's own old card", () => {
   });
 });
 
+describe("F-8: link replay by a former inbox", () => {
+  function linkProof(main: ReturnType<typeof signer>, inbox: Hex, issuedAt: string) {
+    const statement = linkStatement({ account: main.qor, inbox, chainId: CHAIN, issuedAt });
+    return encodeLinkProof({ v: 1, statement, signature: main.sign(statement) });
+  }
+
+  it("keeps delivering to the newest linked inbox when an old link proof is re-emitted", async () => {
+    const main = signer(ALICE_MNEMONIC); // a QoreX main account
+    const chain = new FakeChain();
+    chain.pqc.set(main.evm.toLowerCase(), main.pqPublicKey);
+    const oldInbox = "0x9d915196cB6c562E95F83240d5f1F6E4D38661A5" as Hex; // later compromised
+    const newInbox = "0x35750cc522969F297F421E411e0Cb4493572b1a8" as Hex;
+    const oldProof = linkProof(main, oldInbox, "2026-11-19T00:00:00.000Z");
+    chain.link(oldInbox, main.evm, oldProof);
+    chain.link(newInbox, main.evm, linkProof(main, newInbox, "2026-11-20T00:00:00.000Z"));
+
+    // Whoever controls the old inbox calls link(main, oldProof) again: the proof is genuine and names it.
+    chain.link(oldInbox, main.evm, oldProof);
+
+    const client = new WhisperClient({ publicClient: chain.client(), fetch: noRest });
+    expect(await client.getLinkedInbox(main.evm)).toBe(toEvmAddress(newInbox));
+  });
+
+  it("ranks links signed before `issued` existed as oldest, and still follows them when they are all there is", async () => {
+    const main = signer(ALICE_MNEMONIC);
+    const chain = new FakeChain();
+    chain.pqc.set(main.evm.toLowerCase(), main.pqPublicKey);
+    const legacyInbox = "0x9d915196cB6c562E95F83240d5f1F6E4D38661A5" as Hex;
+    const legacy = linkStatement({ account: main.qor, inbox: legacyInbox, chainId: CHAIN });
+    const legacyProof = encodeLinkProof({ v: 1, statement: legacy, signature: main.sign(legacy) });
+    chain.link(legacyInbox, main.evm, legacyProof);
+    const client = new WhisperClient({ publicClient: chain.client(), fetch: noRest });
+    expect(await client.getLinkedInbox(main.evm)).toBe(toEvmAddress(legacyInbox));
+
+    const newInbox = "0x35750cc522969F297F421E411e0Cb4493572b1a8" as Hex;
+    chain.link(newInbox, main.evm, linkProof(main, newInbox, "2026-11-20T00:00:00.000Z"));
+    chain.link(legacyInbox, main.evm, legacyProof); // replayed legacy proof
+    expect(await new WhisperClient({ publicClient: chain.client(), fetch: noRest }).getLinkedInbox(main.evm)).toBe(toEvmAddress(newInbox));
+  });
+});

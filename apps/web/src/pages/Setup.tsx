@@ -250,7 +250,7 @@ function MainAccountStep() {
             setBusy(true);
             setError(undefined);
             try {
-              const statement = linkStatement({ account: account.qorAddress, inbox, chainId: s.client.network.chainId });
+              const statement = linkStatement({ account: account.qorAddress, inbox, chainId: s.client.network.chainId, issuedAt: new Date().toISOString() });
               const signature = await signStatement(s.qorex!, account.qorAddress, statement);
               const proof: WhisperLinkProof & { account: string } = { v: 1, statement, signature, account: account.qorAddress };
               setItem(PENDING_LINK_KEY, JSON.stringify(proof));

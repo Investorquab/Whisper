@@ -7,13 +7,16 @@ import { statementFields } from "./keys.js";
  * A link lets an account that cannot use the EVM lane (a QoreX main account, coin type 118) receive
  * Whisper messages in an inbox it controls. The account signs the statement; the inbox publishes it.
  */
-export function linkStatement(args: { account: string; inbox: string; chainId: string }): string {
+export function linkStatement(args: { account: string; inbox: string; chainId: string; issuedAt?: string }): string {
   return [
     "Whisper link v1",
     "Deliver my Whisper messages to this inbox.",
     `account: ${toQorAddress(args.account)}`,
     `inbox: ${toEvmAddress(args.inbox)}`,
     `chain: ${args.chainId}`,
+    // When the link was made. Readers follow the newest signed link, so an old proof re-sent later cannot
+    // take delivery back. Optional only so that links signed before it existed still verify.
+    ...(args.issuedAt ? [`issued: ${args.issuedAt}`] : []),
   ].join("\n");
 }
 

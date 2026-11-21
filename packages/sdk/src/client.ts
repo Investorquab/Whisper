@@ -288,7 +288,11 @@ export class WhisperClient {
     return false;
   }
 
-  /** The inbox `account` linked with a valid signed proof (latest wins), or undefined. */
+  /**
+   * The inbox `account` linked with a valid signed proof, or undefined. The proof with the newest signed
+   * `issued` time wins, so an old proof re-emitted later (by a former inbox) cannot take delivery back.
+   * Proofs without `issued` (made before it existed) rank oldest; among equals the later event wins.
+   */
   async getLinkedInbox(account: string): Promise<Address | undefined> {
     const address = toEvmAddress(account);
     const lengths = await this.indexLengths(address);
@@ -297,17 +301,21 @@ export class WhisperClient {
     if (!pq) return undefined;
     const blocks = await this.indexBlocks("linkBlocks", address, lengths.links);
     const logs = await this.logsAt(blocks, LINK_EVENT, { account: address });
-    for (const log of [...logs].reverse()) {
+    let best: { inbox: Address; issued: number } | undefined;
+    for (const log of logs) {
       const ev = decodeEventLog({ abi: whisperMailboxAbi, data: log.data, topics: log.topics });
       if (ev.eventName !== "Linked") continue;
       try {
-        verifyLinkProof({ proof: decodeLinkProof(hexToBytes(ev.args.proof)), account: address, inbox: ev.args.inbox, chainId: this.network.chainId, pqPublicKey: pq });
-        return getAddressSafe(ev.args.inbox);
+        const proof = decodeLinkProof(hexToBytes(ev.args.proof));
+        verifyLinkProof({ proof, account: address, inbox: ev.args.inbox, chainId: this.network.chainId, pqPublicKey: pq });
+        const parsed = Date.parse(statementFields(proof.statement).issued ?? "");
+        const issued = Number.isFinite(parsed) ? parsed : -Infinity;
+        if (!best || issued >= best.issued) best = { inbox: getAddressSafe(ev.args.inbox), issued };
       } catch (error) {
         if (!isWhisperError(error)) throw error;
       }
     }
-    return undefined;
+    return best?.inbox;
   }
 
   /**
