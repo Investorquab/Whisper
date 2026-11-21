@@ -1,6 +1,6 @@
 # Whisper security audit
 
-This is an internal audit: we tried to break Whisper and wrote down what happened. Every result below was run against the code in this repository and, where noted, against the live QoreChain testnet (`qorechain-diana`) with the real QoreX 0.4.3 extension. When something failed, we fixed it and ran it again; the tables show the final state, and the **Findings** section keeps the failures.
+This is an internal audit in two passes (the second, attacker-minded pass is at the end): we tried to break Whisper and wrote down what happened. Every result below was run against the code in this repository and, where noted, against the live QoreChain testnet (`qorechain-diana`) with the real QoreX 0.4.3 extension. When something failed, we fixed it and ran it again; the tables show the final state, and the **Findings** section keeps the failures.
 
 It is not a third-party audit. Known gaps are listed under **Limitations** and **Open items**.
 
@@ -188,3 +188,39 @@ ATTACK_PRIVATE_KEY=0x… pnpm --filter @whisper/contracts attack:classical   # t
 ```
 
 Never use a key that has held real funds with the attack script. It only prints addresses, but a key typed into a terminal can end up in shell history.
+
+## Second pass, 20–21 November 2026
+
+The first pass proved Whisper works and blocked the attacks we expected. The second pass asked a harder question: **who could read a message that was not meant for them, or make Whisper vouch for something false?** It attacked commit `cca7ca4` with working exploits, written as tests in `packages/sdk/test/security.test.ts` that drive the real `WhisperClient` against an in-memory stand-in for the chain. Everything ran locally: no transactions were sent, the live site was not attacked, and no other AI models or external tools were used.
+
+| | |
+| --- | --- |
+| Commit audited | `cca7ca4` |
+| Fix commits | `65d7d1c` (F-6), `2d96e56` (F-7), `c575567` (F-8), `5529c0d` (F-9) |
+| Tests before | 80: 32 SDK, 17 web app, 31 Foundry |
+| Tests after | 88: 40 SDK (8 new security tests), 17 web app, 31 Foundry, all passing; `pnpm check` passes |
+
+### Scope and focus
+How keys are bound to accounts, the recipient key registry, swapping in another key, links between a main account and an inbox, replay, metadata, the contract's access control, how the client uses cryptography (nonces, key derivation, authenticated encryption, randomness, key storage), XSS that could reach keys, the embed kit (popups, iframes, `postMessage`) and the README's promises. Leak sweep: a secret scan of the working tree and all 30 commits on both branches found only the public BIP-39 test mnemonics; no `.env` or key file was ever committed.
+
+### Summary
+
+| Area | Attacks | Result |
+| --- | --- | --- |
+| Key binding and the recipient key registry | forged card, rollback to an old card, publishing for another account, copying someone's ML-DSA key | **F-6** and **F-7** found and fixed; the rest blocked |
+| Links (main account to inbox) | forged link, replay from another inbox, replay by a former inbox | **F-8** found and fixed; the rest blocked |
+| Signed messages and the Check page | header spoofing from the body, an unrelated transaction shown as "sent" proof, re-attribution, chain replay | **F-9** found and fixed; the rest blocked (first-pass tests) |
+| Inbox view | quotes and reactions pointing into another conversation | blocked (scoped by conversation) |
+| Browser and embedding | XSS sinks, compose URL parameters, `postMessage`, opener, framing | blocked; F-2, F-3 and F-4 still in place |
+| Cryptography | nonces, key derivation, authenticated encryption, randomness, vault | no misuse found (see leads) |
+| Contract | access control on every write function, fee withdrawal | blocked; index spam is a lead |
+
+### Earlier fixes re-tested
+F-1 (the link setup checks the ML-DSA key and reads the link back), F-2 (URL label and draft are trimmed and shown as text), F-3 (CSP `script-src 'self'`, no inline scripts), F-4 (COOP header) and F-5 (backup error wording) still hold in the code. The live headers were not re-checked in this pass.
+
+### Findings (second pass)
+
+Each finding was first shown by a test that fails on the old code (`cca7ca4`), then fixed, then the test was re-run and the fix attacked again.
+
+| ID | Severity | What was wrong | Fix | Status |
+| --- | --- | --- | --- | --- |
